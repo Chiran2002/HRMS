@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HRMS Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="sidebar">
+        <h2>HRMS System</h2>
+        <button onclick="loadData('employees')">Employees</button>
+        <button onclick="loadData('attendance')">Attendance</button>
+        <button onclick="loadData('leaves')">Leaves</button>
+        <button onclick="loadData('payroll')">Payroll</button>
+    </div>
+    
+    <div class="main-content">
+        <h1 id="page-title">Dashboard</h1>
+        <div class="table-container">
+            <table id="data-table">
+                <thead id="table-head">
+                    <!-- Table headers will be generated here dynamically -->
+                </thead>
+                <tbody id="table-body">
+                    <!-- Table rows will be generated here dynamically -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

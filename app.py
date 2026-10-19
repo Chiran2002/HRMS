@@ -150,29 +150,87 @@ def update_delete_employee(emp_id):
             cursor.close()
             connection.close()
 
-# Attendance Route
-@app.route('/attendance', methods=['GET'])
-def get_attendance():
+# Attendance Route (GET & POST)
+@app.route('/attendance', methods=['GET', 'POST'])
+def handle_attendance():
     connection = create_db_connection()
     if connection is None: return jsonify({"error": "DB failed"}), 500
     try:
         cursor = connection.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM Attendance;")
-        return jsonify(cursor.fetchall()), 200
-    except Error as e: return jsonify({"error": str(e)}), 500
-    finally: connection.close()
+        
+        # GET: Fetch all attendance records
+        if request.method == 'GET':
+            # Map columns to match the existing database schema (attendance_id, record_date)
+            query = """
+                SELECT a.attendance_id, a.emp_id, CONCAT(e.first_name, ' ', e.last_name) AS employee_name, a.record_date, a.status 
+                FROM attendance a
+                JOIN employees e ON a.emp_id = e.emp_id
+                ORDER BY a.record_date DESC;
+            """
+            cursor.execute(query)
+            return jsonify(cursor.fetchall()), 200
+            
+        # POST: Add new attendance record
+        elif request.method == 'POST':
+            data = request.json
+            
+            if not data.get('emp_id') or not data.get('date') or not data.get('status'):
+                return jsonify({"error": "All fields are required!"}), 400
+                
+            # Insert data using the correct column name 'record_date'
+            query = "INSERT INTO attendance (emp_id, record_date, status) VALUES (%s, %s, %s)"
+            cursor.execute(query, (data.get('emp_id'), data.get('date'), data.get('status')))
+            connection.commit()
+            return jsonify({"message": "Attendance marked successfully!"}), 201
 
-# Leaves Route
-@app.route('/leaves', methods=['GET'])
-def get_leaves():
+    except Exception as e: 
+        print(e)
+        return jsonify({"error": str(e)}), 500
+    finally: 
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+# Leaves Route (GET & POST)
+@app.route('/leaves', methods=['GET', 'POST'])
+def handle_leaves():
     connection = create_db_connection()
     if connection is None: return jsonify({"error": "DB failed"}), 500
     try:
         cursor = connection.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM Leaves;")
-        return jsonify(cursor.fetchall()), 200
-    except Error as e: return jsonify({"error": str(e)}), 500
-    finally: connection.close()
+        
+        # GET: Fetch all leave records
+        if request.method == 'GET':
+            query = """
+                SELECT l.leave_id, l.emp_id, CONCAT(e.first_name, ' ', e.last_name) AS employee_name, l.leave_type, l.start_date, l.end_date, l.status 
+                FROM leaves l
+                JOIN employees e ON l.emp_id = e.emp_id
+                ORDER BY l.start_date DESC;
+            """
+            cursor.execute(query)
+            return jsonify(cursor.fetchall()), 200
+            
+        # POST: Apply for a new leave
+        elif request.method == 'POST':
+            data = request.json
+            
+            if not data.get('emp_id') or not data.get('leave_type') or not data.get('start_date') or not data.get('end_date'):
+                return jsonify({"error": "All fields are required!"}), 400
+                
+            query = "INSERT INTO leaves (emp_id, leave_type, start_date, end_date, status) VALUES (%s, %s, %s, %s, %s)"
+            status = data.get('status', 'Pending')
+            
+            cursor.execute(query, (data.get('emp_id'), data.get('leave_type'), data.get('start_date'), data.get('end_date'), status))
+            connection.commit()
+            return jsonify({"message": "Leave applied successfully!"}), 201
+
+    except Exception as e: 
+        print(e)
+        return jsonify({"error": str(e)}), 500
+    finally: 
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
 
 # Payroll Route
 @app.route('/payroll', methods=['GET'])

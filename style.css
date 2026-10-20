@@ -399,3 +399,29 @@ tbody tr:hover {
 .btn-delete:hover {
     background-color: #991b1b;
 }
+/* ================= UI ENHANCEMENTS (Badges & Avatars) ================= */
+.badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+    text-align: center;
+}
+.badge-success { background-color: rgba(16, 185, 129, 0.15); color: #34d399; } /* Present, Approved */
+.badge-danger { background-color: rgba(239, 68, 68, 0.15); color: #f87171; } /* Absent, Rejected */
+.badge-warning { background-color: rgba(245, 158, 11, 0.15); color: #fbbf24; } /* Pending, Half Day */
+.badge-info { background-color: rgba(6, 182, 212, 0.15); color: #22d3ee; } /* On Leave */
+
+.emp-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.emp-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--border-color);
+}

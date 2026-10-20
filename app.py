@@ -232,17 +232,50 @@ def handle_leaves():
             cursor.close()
             connection.close()
 
-# Payroll Route
-@app.route('/payroll', methods=['GET'])
-def get_payroll():
+# Payroll Route (GET & POST)
+@app.route('/payroll', methods=['GET', 'POST'])
+def handle_payroll():
     connection = create_db_connection()
     if connection is None: return jsonify({"error": "DB failed"}), 500
     try:
         cursor = connection.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM Payroll;")
-        return jsonify(cursor.fetchall()), 200
-    except Error as e: return jsonify({"error": str(e)}), 500
-    finally: connection.close()
+        
+        # GET: Fetch all payroll records
+        if request.method == 'GET':
+            query = """
+                SELECT p.payroll_id, p.emp_id, CONCAT(e.first_name, ' ', e.last_name) AS employee_name, 
+                       p.month_year, p.basic_salary, p.deductions, p.net_salary, p.payment_date 
+                FROM payroll p
+                JOIN employees e ON p.emp_id = e.emp_id
+                ORDER BY p.payment_date DESC;
+            """
+            cursor.execute(query)
+            return jsonify(cursor.fetchall()), 200
+            
+        # POST: Generate Payroll
+        elif request.method == 'POST':
+            data = request.json
+            
+            if not data.get('emp_id') or not data.get('month_year') or not data.get('basic_salary') or not data.get('payment_date'):
+                return jsonify({"error": "Required fields are missing!"}), 400
+                
+            # Calculate net salary
+            basic = float(data.get('basic_salary'))
+            deductions = float(data.get('deductions') or 0)
+            net_salary = basic - deductions
+
+            query = "INSERT INTO payroll (emp_id, month_year, basic_salary, deductions, net_salary, payment_date) VALUES (%s, %s, %s, %s, %s, %s)"
+            cursor.execute(query, (data.get('emp_id'), data.get('month_year'), basic, deductions, net_salary, data.get('payment_date')))
+            connection.commit()
+            return jsonify({"message": "Payroll generated successfully!"}), 201
+
+    except Exception as e: 
+        print(e)
+        return jsonify({"error": str(e)}), 500
+    finally: 
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
 
 if __name__ == '__main__':
     # Run the Flask server on port 5000

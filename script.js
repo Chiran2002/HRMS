@@ -7,7 +7,6 @@ let editEmployeeId = null;
 function loadData(endpoint, buttonElement = null) {
     currentEndpoint = endpoint;
     document.getElementById('search-input').value = '';
-    
     const titleElement = document.getElementById('page-title');
     titleElement.textContent = endpoint.charAt(0).toUpperCase() + endpoint.slice(1) + ' Data';
 
@@ -38,7 +37,7 @@ function loadData(endpoint, buttonElement = null) {
         .catch(error => {
             loader.classList.add('hidden');
             console.error('Error fetching data:', error);
-            showToast('Error fetching data. Check backend connection.', true);
+            showToast('Error fetching data.', true);
         });
 }
 
@@ -53,28 +52,27 @@ function updateDashboardAndButtons(data) {
         
         const departments = new Set(data.map(emp => emp.department).filter(dep => dep && dep.trim() !== ''));
         document.getElementById('total-departments').textContent = departments.size;
-
         const totalSalary = data.reduce((sum, emp) => sum + (parseFloat(emp.basic_salary) || 0), 0);
-        document.getElementById('total-salary').textContent = 'Rs. ' + totalSalary.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('total-salary').textContent = 'Rs. ' + totalSalary.toLocaleString();
         
     } else if (currentEndpoint === 'attendance') {
         mainButton.innerHTML = '<i class="fa-solid fa-clock"></i> Mark Attendance';
-        mainButton.onclick = openAttendanceModal; // Changed from Toast to Modal
+        mainButton.onclick = openAttendanceModal;
         mainButton.style.display = 'flex';
-        
         document.getElementById('total-departments').textContent = '-';
         document.getElementById('total-salary').textContent = '-';
         
     } else if (currentEndpoint === 'leaves') {
         mainButton.innerHTML = '<i class="fa-solid fa-calendar-plus"></i> Apply Leave';
-        mainButton.onclick = () => showToast('Leave application feature coming soon!', false);
+        mainButton.onclick = openLeaveModal;
         mainButton.style.display = 'flex';
-        
         document.getElementById('total-departments').textContent = '-';
         document.getElementById('total-salary').textContent = '-';
         
     } else if (currentEndpoint === 'payroll') {
-        mainButton.style.display = 'none'; 
+        mainButton.innerHTML = '<i class="fa-solid fa-file-invoice-dollar"></i> Generate Payroll';
+        mainButton.onclick = openPayrollModal;
+        mainButton.style.display = 'flex';
         document.getElementById('total-departments').textContent = '-';
         document.getElementById('total-salary').textContent = '-';
     }
@@ -83,11 +81,8 @@ function updateDashboardAndButtons(data) {
 document.getElementById('search-input').addEventListener('input', function(e) {
     const searchTerm = e.target.value.toLowerCase();
     if(!currentTableData) return;
-    
     const filteredData = currentTableData.filter(item => {
-        return Object.values(item).some(val => 
-            String(val).toLowerCase().includes(searchTerm)
-        );
+        return Object.values(item).some(val => String(val).toLowerCase().includes(searchTerm));
     });
     renderTable(filteredData);
 });
@@ -122,13 +117,34 @@ function renderTable(data) {
         const row = document.createElement('tr');
         headers.forEach(key => {
             const td = document.createElement('td');
+            
+            // Format Dates
             if((key === 'hire_date' || key === 'date' || key === 'record_date' || key === 'start_date' || key === 'end_date' || key === 'payment_date') && item[key]) {
-                try {
-                    td.textContent = new Date(item[key]).toISOString().split('T')[0];
-                } catch {
-                     td.textContent = item[key];
-                }
-            } else {
+                try { td.textContent = new Date(item[key]).toISOString().split('T')[0]; } 
+                catch { td.textContent = item[key]; }
+            } 
+            // Format Status with Badges
+            else if (key === 'status') {
+                let badgeClass = 'badge-info';
+                const statusStr = String(item[key]).toLowerCase();
+                if (statusStr.includes('present') || statusStr.includes('approved')) badgeClass = 'badge-success';
+                else if (statusStr.includes('absent') || statusStr.includes('rejected')) badgeClass = 'badge-danger';
+                else if (statusStr.includes('pending') || statusStr.includes('half')) badgeClass = 'badge-warning';
+                
+                td.innerHTML = `<span class="badge ${badgeClass}">${item[key]}</span>`;
+            }
+            // Add Avatars to Names
+            else if (key === 'employee_name' || key === 'first_name') {
+                const nameStr = key === 'employee_name' ? item[key] : `${item.first_name} ${item.last_name || ''}`.trim();
+                const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(nameStr)}&background=random&color=fff&bold=true`;
+                td.innerHTML = `
+                    <div class="emp-name-cell">
+                        <img src="${avatarUrl}" class="emp-avatar" alt="Avatar">
+                        <span>${item[key]}</span>
+                    </div>
+                `;
+            } 
+            else {
                 td.textContent = item[key] !== null ? item[key] : '-'; 
             }
             row.appendChild(td);
@@ -166,29 +182,22 @@ function openModal() {
 
 function closeModal() {
     document.getElementById('employee-modal').classList.add('hidden');
-    document.getElementById('add-employee-form').reset();
 }
 
 function editEmployee(id) {
     isEditMode = true;
     editEmployeeId = id;
-    
     const employee = currentTableData.find(emp => emp.emp_id === id);
     if(!employee) return;
-
     document.getElementById('modal-title').textContent = 'Edit Employee';
     document.getElementById('first_name').value = employee.first_name || '';
     document.getElementById('last_name').value = employee.last_name || '';
     document.getElementById('email').value = employee.email || '';
     document.getElementById('phone').value = employee.phone || '';
     document.getElementById('department').value = employee.department || '';
-    
     if(employee.hire_date) {
         document.getElementById('hire_date').value = new Date(employee.hire_date).toISOString().split('T')[0];
-    } else {
-        document.getElementById('hire_date').value = '';
-    }
-    
+    } else { document.getElementById('hire_date').value = ''; }
     document.getElementById('basic_salary').value = employee.basic_salary || '';
     document.getElementById('employee-modal').classList.remove('hidden');
 }
@@ -196,14 +205,7 @@ function editEmployee(id) {
 function deleteEmployee(id) {
     if(confirm('Are you sure you want to delete this employee?')) {
         fetch(`${apiUrl}/employees/${id}`, { method: 'DELETE' })
-        .then(response => {
-            if (!response.ok) throw new Error('Failed to delete employee');
-            return response.json();
-        })
-        .then(data => {
-            showToast('Employee deleted successfully!', false);
-            loadData('employees'); 
-        })
+        .then(() => { showToast('Employee deleted successfully!', false); loadData('employees'); })
         .catch(error => console.error('Error:', error));
     }
 }
@@ -219,37 +221,26 @@ document.getElementById('add-employee-form').addEventListener('submit', function
         hire_date: document.getElementById('hire_date').value,
         basic_salary: document.getElementById('basic_salary').value
     };
-
     const method = isEditMode ? 'PUT' : 'POST';
     const url = isEditMode ? `${apiUrl}/employees/${editEmployeeId}` : `${apiUrl}/employees`;
-
     fetch(url, {
         method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(employeeData)
     })
-    .then(response => {
-        if (!response.ok) throw new Error('Failed to save employee');
-        return response.json();
-    })
-    .then(data => {
-        showToast(isEditMode ? 'Employee updated successfully!' : 'Employee added successfully!', false);
-        closeModal();          
-        loadData('employees'); 
+    .then(() => {
+        showToast(isEditMode ? 'Employee updated!' : 'Employee added!', false);
+        closeModal(); loadData('employees'); 
     });
 });
 
 /* ================= ATTENDANCE MODAL LOGIC ================= */
 function openAttendanceModal() {
     document.getElementById('add-attendance-form').reset();
-    // අද දිනය ස්වයංක්‍රීයව තෝරා ගැනීමට
     document.getElementById('att_date').value = new Date().toISOString().split('T')[0];
     document.getElementById('attendance-modal').classList.remove('hidden');
 }
-
-function closeAttendanceModal() {
-    document.getElementById('attendance-modal').classList.add('hidden');
-}
+function closeAttendanceModal() { document.getElementById('attendance-modal').classList.add('hidden'); }
 
 document.getElementById('add-attendance-form').addEventListener('submit', function(e) {
     e.preventDefault(); 
@@ -258,25 +249,73 @@ document.getElementById('add-attendance-form').addEventListener('submit', functi
         date: document.getElementById('att_date').value,
         status: document.getElementById('att_status').value
     };
-
     fetch(`${apiUrl}/attendance`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(attData)
     })
-    .then(response => {
-        if (!response.ok) throw new Error('Failed to save attendance');
-        return response.json();
+    .then(() => {
+        showToast('Attendance marked!', false);
+        closeAttendanceModal(); loadData('attendance'); 
+    }).catch(() => showToast('Error marking attendance.', true));
+});
+
+/* ================= LEAVES MODAL LOGIC ================= */
+function openLeaveModal() {
+    document.getElementById('apply-leave-form').reset();
+    document.getElementById('lv_start_date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('leave-modal').classList.remove('hidden');
+}
+function closeLeaveModal() { document.getElementById('leave-modal').classList.add('hidden'); }
+
+document.getElementById('apply-leave-form').addEventListener('submit', function(e) {
+    e.preventDefault(); 
+    const leaveData = {
+        emp_id: document.getElementById('lv_emp_id').value,
+        leave_type: document.getElementById('lv_type').value,
+        start_date: document.getElementById('lv_start_date').value,
+        end_date: document.getElementById('lv_end_date').value,
+        status: document.getElementById('lv_status').value
+    };
+    fetch(`${apiUrl}/leaves`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(leaveData)
     })
-    .then(data => {
-        showToast('Attendance marked successfully!', false);
-        closeAttendanceModal();          
-        loadData('attendance'); // අලුත් දත්ත වගුවට ලබා ගැනීම
+    .then(() => {
+        showToast('Leave applied!', false);
+        closeLeaveModal(); loadData('leaves'); 
+    }).catch(() => showToast('Error applying leave.', true));
+});
+
+/* ================= PAYROLL MODAL LOGIC ================= */
+function openPayrollModal() {
+    document.getElementById('add-payroll-form').reset();
+    const today = new Date();
+    document.getElementById('pay_month_year').value = today.toISOString().slice(0, 7);
+    document.getElementById('pay_date').value = today.toISOString().split('T')[0];
+    document.getElementById('payroll-modal').classList.remove('hidden');
+}
+function closePayrollModal() { document.getElementById('payroll-modal').classList.add('hidden'); }
+
+document.getElementById('add-payroll-form').addEventListener('submit', function(e) {
+    e.preventDefault(); 
+    const payrollData = {
+        emp_id: document.getElementById('pay_emp_id').value,
+        month_year: document.getElementById('pay_month_year').value,
+        basic_salary: document.getElementById('pay_basic').value,
+        deductions: document.getElementById('pay_deductions').value || 0,
+        payment_date: document.getElementById('pay_date').value
+    };
+    fetch(`${apiUrl}/payroll`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payrollData)
     })
-    .catch(error => {
-        console.error('Error:', error);
-        showToast('Error marking attendance. Check Employee ID.', true);
-    });
+    .then(() => {
+        showToast('Payroll generated successfully!', false);
+        closePayrollModal(); loadData('payroll'); 
+    }).catch(() => showToast('Error generating payroll.', true));
 });
 
 window.onload = () => {

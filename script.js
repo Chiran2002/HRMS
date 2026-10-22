@@ -42,7 +42,7 @@ function loadData(endpoint, buttonElement = null) {
 }
 
 function updateDashboardAndButtons(data) {
-    const mainButton = document.querySelector('.controls-bar .btn-primary');
+    const mainButton = document.getElementById('main-action-btn');
     document.getElementById('total-count').textContent = data.length || 0;
     
     if (currentEndpoint === 'employees') {
@@ -317,6 +317,50 @@ document.getElementById('add-payroll-form').addEventListener('submit', function(
         closePayrollModal(); loadData('payroll'); 
     }).catch(() => showToast('Error generating payroll.', true));
 });
+
+/* ================= EXPORT FUNCTIONS (PDF & EXCEL) ================= */
+function exportToExcel() {
+    if (!currentTableData || currentTableData.length === 0) {
+        showToast('No data to export!', true);
+        return;
+    }
+    const ws = XLSX.utils.json_to_sheet(currentTableData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Data");
+    XLSX.writeFile(wb, `${currentEndpoint}_data.xlsx`);
+    showToast('Excel downloaded successfully!', false);
+}
+
+function exportToPDF() {
+    if (!currentTableData || currentTableData.length === 0) {
+        showToast('No data to export!', true);
+        return;
+    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    doc.text(`${currentEndpoint.toUpperCase()} DATA`, 14, 15);
+    
+    const headers = Object.keys(currentTableData[0]);
+    const data = currentTableData.map(obj => Object.values(obj).map(val => {
+        if(val === null) return '-';
+        // Date format handling for PDF
+        if(typeof val === 'string' && val.includes('T') && val.includes('Z')) return val.split('T')[0];
+        return String(val);
+    }));
+    
+    doc.autoTable({
+        head: [headers.map(h => h.replace(/_/g, ' ').toUpperCase())],
+        body: data,
+        startY: 20,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [14, 165, 233] }
+    });
+    
+    doc.save(`${currentEndpoint}_data.pdf`);
+    showToast('PDF downloaded successfully!', false);
+}
 
 window.onload = () => {
     const firstBtn = document.querySelector('.sidebar button');

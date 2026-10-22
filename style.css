@@ -425,3 +425,22 @@ tbody tr:hover {
     object-fit: cover;
     border: 1px solid var(--border-color);
 }
+/* ================= SECONDARY BUTTONS (Export) ================= */
+.btn-secondary {
+    background-color: #1e293b;
+    color: var(--white);
+    border: 1px solid var(--border-color);
+    padding: 10px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: 0.3s;
+}
+.btn-secondary:hover {
+    background-color: #334155;
+    border-color: var(--primary-color);
+}

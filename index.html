@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Professional HRMS (Dark Mode)</title>
@@ -63,13 +66,17 @@
             </div>
         </div>
 
-        <!-- Controls: Search Bar & Add Button -->
+        <!-- Controls: Search Bar & Buttons -->
         <div class="controls-bar">
             <div class="search-box">
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <input type="text" id="search-input" placeholder="Search by name, email, department...">
             </div>
-            <button class="btn-primary" onclick="openModal()"><i class="fa-solid fa-plus"></i> Add Employee</button>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-secondary" onclick="exportToExcel()"><i class="fa-solid fa-file-excel"></i> Excel</button>
+                <button class="btn-secondary" onclick="exportToPDF()"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+                <button id="main-action-btn" class="btn-primary" onclick="openModal()"><i class="fa-solid fa-plus"></i> Add Employee</button>
+            </div>
         </div>
 
         <!-- Data Table -->

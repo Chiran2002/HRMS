@@ -1,18 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Professional HRMS (Dark Mode)</title>
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
-    <link rel="icon" href="data:,">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
     <div class="sidebar">
@@ -32,20 +29,17 @@
         <header class="topbar">
             <h1 id="page-title">Employees Data</h1>
             <div class="user-profile">
-                <!-- User Profile Image styling changed for Dark Blue theme -->
                 <img src="https://ui-avatars.com/api/?name=Admin+User&background=0b1120&color=0ea5e9" alt="Admin">
                 <span>Admin User</span>
             </div>
         </header>
 
-        <!-- Advanced Dashboard Summary Cards (Dark Theme colors) -->
         <div class="dashboard-cards">
             <div class="card">
                 <div class="card-info">
                     <h3>Total Employees</h3>
                     <p id="total-count">0</p>
                 </div>
-                <!-- Glowing Blue Icon -->
                 <div class="card-icon" style="color: #38bdf8; background: rgba(56, 189, 248, 0.1);"><i class="fa-solid fa-users"></i></div>
             </div>
             <div class="card">
@@ -53,7 +47,6 @@
                     <h3>Departments</h3>
                     <p id="total-departments">0</p>
                 </div>
-                <!-- Glowing Purple Icon -->
                 <div class="card-icon" style="color: #a78bfa; background: rgba(167, 139, 250, 0.1);"><i class="fa-solid fa-building"></i></div>
             </div>
             <div class="card">
@@ -61,12 +54,10 @@
                     <h3>Total Monthly Salary</h3>
                     <p id="total-salary">Rs. 0</p>
                 </div>
-                <!-- Glowing Green Icon -->
                 <div class="card-icon" style="color: #34d399; background: rgba(52, 211, 153, 0.1);"><i class="fa-solid fa-money-bill-wave"></i></div>
             </div>
         </div>
 
-        <!-- Controls: Search Bar & Buttons -->
         <div class="controls-bar">
             <div class="search-box">
                 <i class="fa-solid fa-magnifying-glass"></i>
@@ -79,21 +70,15 @@
             </div>
         </div>
 
-        <!-- Data Table -->
         <div class="table-container">
             <div id="loader" class="loader hidden"></div>
             <table id="data-table">
-                <thead id="table-head">
-                    <!-- Table headers dynamically generated -->
-                </thead>
-                <tbody id="table-body">
-                    <!-- Table rows dynamically generated -->
-                </tbody>
+                <thead id="table-head"></thead>
+                <tbody id="table-body"></tbody>
             </table>
         </div>
     </div>
 
-    <!-- Add/Edit Employee Modal -->
     <div id="employee-modal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-header">
@@ -101,185 +86,109 @@
                 <span class="close-btn" onclick="closeModal()">&times;</span>
             </div>
             <form id="add-employee-form">
-                <div class="form-group">
-                    <label>First Name</label>
-                    <input type="text" id="first_name" required>
-                </div>
-                <div class="form-group">
-                    <label>Last Name</label>
-                    <input type="text" id="last_name" required>
-                </div>
-                <div class="form-group">
-                    <label>Email</label>
-                    <input type="email" id="email" required>
-                </div>
-                <div class="form-group">
-                    <label>Phone</label>
-                    <input type="text" id="phone">
-                </div>
-                <div class="form-group">
-                    <label>Department</label>
-                    <input type="text" id="department">
-                </div>
-                <div class="form-group">
-                    <label>Hire Date</label>
-                    <input type="date" id="hire_date">
-                </div>
-                <div class="form-group">
-                    <label>Basic Salary</label>
-                    <input type="number" id="basic_salary" step="0.01">
-                </div>
+                <div class="form-group"><label>First Name</label><input type="text" id="first_name" required></div>
+                <div class="form-group"><label>Last Name</label><input type="text" id="last_name" required></div>
+                <div class="form-group"><label>Email</label><input type="email" id="email" required></div>
+                <div class="form-group"><label>Phone</label><input type="text" id="phone"></div>
+                <div class="form-group"><label>Department</label><input type="text" id="department"></div>
+                <div class="form-group"><label>Hire Date</label><input type="date" id="hire_date"></div>
+                <div class="form-group"><label>Basic Salary</label><input type="number" id="basic_salary" step="0.01"></div>
                 <button type="submit" class="btn-primary" style="width: 100%; margin-top: 15px; justify-content: center;">Save Employee</button>
             </form>
         </div>
     </div>
 
-    <!-- Mark Attendance Modal -->
+    <div id="leave-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header"><h2>Apply Leave</h2><span class="close-btn" onclick="closeLeaveModal()">&times;</span></div>
+            <form id="apply-leave-form">
+                <div class="form-group"><label>Employee ID</label><input type="number" id="lv_emp_id" required></div>
+                <div class="form-group"><label>Leave Type</label>
+                    <select id="lv_type" required style="width: 100%; padding: 10px; border-radius: 6px; background-color: var(--bg-color); color: var(--text-main);">
+                        <option value="Annual">Annual Leave</option>
+                        <option value="Medical">Medical Leave</option>
+                        <option value="Casual">Casual Leave</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Start Date</label><input type="date" id="lv_start_date" required></div>
+                <div class="form-group"><label>End Date</label><input type="date" id="lv_end_date" required></div>
+                <div class="form-group"><label>Status</label>
+                    <select id="lv_status" required style="width: 100%; padding: 10px; border-radius: 6px; background-color: var(--bg-color); color: var(--text-main);">
+                        <option value="Pending">Pending</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Rejected">Rejected</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-primary" style="width: 100%; margin-top: 15px; justify-content: center;">Save Leave</button>
+            </form>
+        </div>
+    </div>
+
     <div id="attendance-modal" class="modal hidden">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Mark Attendance</h2>
-                <span class="close-btn" onclick="closeAttendanceModal()">&times;</span>
-            </div>
+            <div class="modal-header"><h2>Mark Attendance</h2><span class="close-btn" onclick="closeAttendanceModal()">&times;</span></div>
             <form id="add-attendance-form">
-                <div class="form-group">
-                    <label>Employee ID</label>
-                    <input type="number" id="att_emp_id" required>
-                </div>
-                <div class="form-group">
-                    <label>Date</label>
-                    <input type="date" id="att_date" required>
-                </div>
-                <div class="form-group">
-                    <label>Status</label>
-                    <select id="att_status" required style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--bg-color); color: var(--text-main); outline: none;">
+                <div class="form-group"><label>Employee ID</label><input type="number" id="att_emp_id" required></div>
+                <div class="form-group"><label>Date</label><input type="date" id="att_date" required></div>
+                <div class="form-group"><label>Status</label>
+                    <select id="att_status" required style="width: 100%; padding: 10px; border-radius: 6px; background-color: var(--bg-color); color: var(--text-main);">
                         <option value="Present">Present</option>
                         <option value="Absent">Absent</option>
-                        <option value="Half Day">Half Day</option>
                         <option value="On Leave">On Leave</option>
                     </select>
                 </div>
-                <button type="submit" class="btn-primary" style="width: 100%; margin-top: 15px; justify-content: center;">Save Attendance</button>
-            </form>
-        </div>
-    </div>
-<!-- Apply Leave Modal -->
-    <div id="leave-modal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Apply Leave</h2>
-                <span class="close-btn" onclick="closeLeaveModal()">&times;</span>
-            </div>
-            <form id="apply-leave-form">
-                <div class="form-group">
-                    <label>Employee ID</label>
-                    <input type="number" id="lv_emp_id" required>
-                </div>
-                <div class="form-group">
-                    <label>Leave Type</label>
-                    <select id="lv_type" required style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--bg-color); color: var(--text-main); outline: none;">
-                        <option value="Annual">Annual Leave</option>
-                        <option value="Medical">Medical Leave</option>
-                        <option value="Casual">Casual Leave</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Start Date</label>
-                    <input type="date" id="lv_start_date" required>
-                </div>
-                <div class="form-group">
-                    <label>End Date</label>
-                    <input type="date" id="lv_end_date" required>
-                </div>
-                <div class="form-group">
-                    <label>Status</label>
-                    <select id="lv_status" required style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--bg-color); color: var(--text-main); outline: none;">
-                        <option value="Pending">Pending</option>
-                        <option value="Approved">Approved</option>
-                        <option value="Rejected">Rejected</option>
-                    </select>
-                </div>
-                <button type="submit" class="btn-primary" style="width: 100%; margin-top: 15px; justify-content: center;">Save Leave</button>
+                <div class="form-group"><label>OT Hours (If any)</label><input type="number" id="att_ot_hours" step="0.5" value="0"></div>
+                <button type="submit" class="btn-primary" style="width: 100%; margin-top: 15px; justify-content: center;">Save</button>
             </form>
         </div>
     </div>
 
-    <!-- Apply Leave Modal -->
-    <div id="leave-modal" class="modal hidden">
+    <div id="advance-modal" class="modal hidden">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Apply Leave</h2>
-                <span class="close-btn" onclick="closeLeaveModal()">&times;</span>
-            </div>
-            <form id="apply-leave-form">
-                <div class="form-group">
-                    <label>Employee ID</label>
-                    <input type="number" id="lv_emp_id" required>
-                </div>
-                <div class="form-group">
-                    <label>Leave Type</label>
-                    <select id="lv_type" required style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--bg-color); color: var(--text-main); outline: none;">
-                        <option value="Annual">Annual Leave</option>
-                        <option value="Medical">Medical Leave</option>
-                        <option value="Casual">Casual Leave</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Start Date</label>
-                    <input type="date" id="lv_start_date" required>
-                </div>
-                <div class="form-group">
-                    <label>End Date</label>
-                    <input type="date" id="lv_end_date" required>
-                </div>
-                <div class="form-group">
-                    <label>Status</label>
-                    <select id="lv_status" required style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--bg-color); color: var(--text-main); outline: none;">
-                        <option value="Pending">Pending</option>
-                        <option value="Approved">Approved</option>
-                        <option value="Rejected">Rejected</option>
-                    </select>
-                </div>
-                <button type="submit" class="btn-primary" style="width: 100%; margin-top: 15px; justify-content: center;">Save Leave</button>
+            <div class="modal-header"><h2>Add Salary Advance</h2><span class="close-btn" onclick="closeAdvanceModal()">&times;</span></div>
+            <form id="add-advance-form">
+                <div class="form-group"><label>Employee ID</label><input type="number" id="adv_emp_id" required></div>
+                <div class="form-group"><label>Date</label><input type="date" id="adv_date" required></div>
+                <div class="form-group"><label>Amount (Rs.)</label><input type="number" id="adv_amount" step="0.01" required></div>
+                <button type="submit" class="btn-primary" style="width: 100%; margin-top: 15px; justify-content: center;">Save Advance</button>
             </form>
         </div>
     </div>
 
-    <!-- Generate Payroll Modal -->
     <div id="payroll-modal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Generate Payroll</h2>
-                <span class="close-btn" onclick="closePayrollModal()">&times;</span>
-            </div>
+        <div class="modal-content" style="width: 500px;">
+            <div class="modal-header"><h2>Generate Auto Payroll</h2><span class="close-btn" onclick="closePayrollModal()">&times;</span></div>
             <form id="add-payroll-form">
-                <div class="form-group">
-                    <label>Employee ID</label>
-                    <input type="number" id="pay_emp_id" required>
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex:1"><label>Employee ID</label><input type="number" id="pay_emp_id" required></div>
+                    <div class="form-group" style="flex:1"><label>Month (YYYY-MM)</label><input type="month" id="pay_month_year" required onchange="fetchAutoSalaryData()"></div>
+                </div>
+                <button type="button" class="btn-secondary" onclick="fetchAutoSalaryData()" style="width: 100%; margin-bottom: 15px; justify-content: center; background-color: #0ea5e9;">
+                    <i class="fa-solid fa-calculator"></i> Auto-Fetch Data
+                </button>
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex:1"><label>Basic Salary (Rs.)</label><input type="number" id="pay_basic" readonly></div>
+                    <div class="form-group" style="flex:1"><label>Attended Days</label><input type="number" id="pay_attended" readonly></div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex:1"><label>Total OT Hours</label><input type="number" id="pay_ot_hours" readonly></div>
+                    <div class="form-group" style="flex:1"><label>OT Hourly Rate (Rs.)</label><input type="number" id="pay_ot_rate" value="500" oninput="calculateFinalSalary()"></div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex:1"><label>Advances Taken (Rs.)</label><input type="number" id="pay_advances" readonly></div>
+                    <div class="form-group" style="flex:1"><label>Other Deductions (Rs.)</label><input type="number" id="pay_deductions" value="0" oninput="calculateFinalSalary()"></div>
                 </div>
                 <div class="form-group">
-                    <label>Month & Year (YYYY-MM)</label>
-                    <input type="month" id="pay_month_year" required>
+                    <label style="color: #34d399; font-size: 16px;">Net Salary (Rs.)</label>
+                    <input type="number" id="pay_net" readonly style="border-color: #34d399; font-weight: bold; font-size: 18px; color: #34d399; background-color: var(--bg-color);">
                 </div>
-                <div class="form-group">
-                    <label>Basic Salary (Rs.)</label>
-                    <input type="number" id="pay_basic" step="0.01" required>
-                </div>
-                <div class="form-group">
-                    <label>Deductions (Rs.)</label>
-                    <input type="number" id="pay_deductions" step="0.01" value="0">
-                </div>
-                <div class="form-group">
-                    <label>Payment Date</label>
-                    <input type="date" id="pay_date" required>
-                </div>
-                <button type="submit" class="btn-primary" style="width: 100%; margin-top: 15px; justify-content: center;">Generate Payroll</button>
+                <div class="form-group"><label>Payment Date</label><input type="date" id="pay_date" required></div>
+                <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; background-color: #10b981;">Generate Payroll</button>
             </form>
         </div>
     </div>
 
-    <!-- Toast Notification Container -->
     <div id="toast" class="toast hidden"></div>
-
     <script src="script.js"></script>
 </body>
+</html>

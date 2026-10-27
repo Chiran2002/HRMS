@@ -25,7 +25,7 @@ function loadData(endpoint, buttonElement = null) {
 
     fetch(`${apiUrl}/${endpoint}`)
         .then(response => {
-            if (!response.ok) throw new Error('Network response was not ok');
+            if (!response.ok) throw new Error('Network response error');
             return response.json();
         })
         .then(data => {
@@ -36,15 +36,29 @@ function loadData(endpoint, buttonElement = null) {
         })
         .catch(error => {
             loader.classList.add('hidden');
-            console.error('Error fetching data:', error);
+            console.error('Fetch error:', error);
             showToast('Error fetching data.', true);
         });
 }
 
 function updateDashboardAndButtons(data) {
     const mainButton = document.getElementById('main-action-btn');
+    if(!mainButton) return;
+    
     document.getElementById('total-count').textContent = data.length || 0;
     
+    let advBtn = document.getElementById('adv-btn');
+    if(!advBtn) {
+        advBtn = document.createElement('button');
+        advBtn.id = 'adv-btn';
+        advBtn.className = 'btn-secondary';
+        advBtn.innerHTML = '<i class="fa-solid fa-hand-holding-dollar"></i> Add Advance';
+        advBtn.onclick = openAdvanceModal;
+        document.querySelector('.controls-bar > div:last-child').insertBefore(advBtn, mainButton);
+    }
+    
+    advBtn.style.display = 'none';
+
     if (currentEndpoint === 'employees') {
         mainButton.innerHTML = '<i class="fa-solid fa-plus"></i> Add Employee';
         mainButton.onclick = openModal;
@@ -73,6 +87,7 @@ function updateDashboardAndButtons(data) {
         mainButton.innerHTML = '<i class="fa-solid fa-file-invoice-dollar"></i> Generate Payroll';
         mainButton.onclick = openPayrollModal;
         mainButton.style.display = 'flex';
+        advBtn.style.display = 'flex';
         document.getElementById('total-departments').textContent = '-';
         document.getElementById('total-salary').textContent = '-';
     }
@@ -118,12 +133,10 @@ function renderTable(data) {
         headers.forEach(key => {
             const td = document.createElement('td');
             
-            // Format Dates
             if((key === 'hire_date' || key === 'date' || key === 'record_date' || key === 'start_date' || key === 'end_date' || key === 'payment_date') && item[key]) {
                 try { td.textContent = new Date(item[key]).toISOString().split('T')[0]; } 
                 catch { td.textContent = item[key]; }
             } 
-            // Format Status with Badges
             else if (key === 'status') {
                 let badgeClass = 'badge-info';
                 const statusStr = String(item[key]).toLowerCase();
@@ -133,7 +146,6 @@ function renderTable(data) {
                 
                 td.innerHTML = `<span class="badge ${badgeClass}">${item[key]}</span>`;
             }
-            // Add Avatars to Names
             else if (key === 'employee_name' || key === 'first_name') {
                 const nameStr = key === 'employee_name' ? item[key] : `${item.first_name} ${item.last_name || ''}`.trim();
                 const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(nameStr)}&background=random&color=fff&bold=true`;
@@ -171,7 +183,44 @@ function showToast(message, isError = false) {
     setTimeout(() => toast.classList.add('hidden'), 4000);
 }
 
-/* ================= EMPLOYEES MODAL LOGIC ================= */
+function exportToExcel() {
+    if (!currentTableData || currentTableData.length === 0) {
+        showToast('No data to export!', true);
+        return;
+    }
+    const ws = XLSX.utils.json_to_sheet(currentTableData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Data");
+    XLSX.writeFile(wb, `${currentEndpoint}_data.xlsx`);
+    showToast('Excel downloaded successfully!', false);
+}
+
+function exportToPDF() {
+    if (!currentTableData || currentTableData.length === 0) {
+        showToast('No data to export!', true);
+        return;
+    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.text(`${currentEndpoint.toUpperCase()} DATA`, 14, 15);
+    const headers = Object.keys(currentTableData[0]);
+    const data = currentTableData.map(obj => Object.values(obj).map(val => {
+        if(val === null) return '-';
+        if(typeof val === 'string' && val.includes('T') && val.includes('Z')) return val.split('T')[0];
+        return String(val);
+    }));
+    doc.autoTable({
+        head: [headers.map(h => h.replace(/_/g, ' ').toUpperCase())],
+        body: data,
+        startY: 20,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [14, 165, 233] }
+    });
+    doc.save(`${currentEndpoint}_data.pdf`);
+    showToast('PDF downloaded successfully!', false);
+}
+
 function openModal() {
     isEditMode = false;
     editEmployeeId = null;
@@ -206,7 +255,7 @@ function deleteEmployee(id) {
     if(confirm('Are you sure you want to delete this employee?')) {
         fetch(`${apiUrl}/employees/${id}`, { method: 'DELETE' })
         .then(() => { showToast('Employee deleted successfully!', false); loadData('employees'); })
-        .catch(error => console.error('Error:', error));
+        .catch(error => console.error('Delete Error:', error));
     }
 }
 
@@ -234,33 +283,6 @@ document.getElementById('add-employee-form').addEventListener('submit', function
     });
 });
 
-/* ================= ATTENDANCE MODAL LOGIC ================= */
-function openAttendanceModal() {
-    document.getElementById('add-attendance-form').reset();
-    document.getElementById('att_date').value = new Date().toISOString().split('T')[0];
-    document.getElementById('attendance-modal').classList.remove('hidden');
-}
-function closeAttendanceModal() { document.getElementById('attendance-modal').classList.add('hidden'); }
-
-document.getElementById('add-attendance-form').addEventListener('submit', function(e) {
-    e.preventDefault(); 
-    const attData = {
-        emp_id: document.getElementById('att_emp_id').value,
-        date: document.getElementById('att_date').value,
-        status: document.getElementById('att_status').value
-    };
-    fetch(`${apiUrl}/attendance`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(attData)
-    })
-    .then(() => {
-        showToast('Attendance marked!', false);
-        closeAttendanceModal(); loadData('attendance'); 
-    }).catch(() => showToast('Error marking attendance.', true));
-});
-
-/* ================= LEAVES MODAL LOGIC ================= */
 function openLeaveModal() {
     document.getElementById('apply-leave-form').reset();
     document.getElementById('lv_start_date').value = new Date().toISOString().split('T')[0];
@@ -288,7 +310,45 @@ document.getElementById('apply-leave-form').addEventListener('submit', function(
     }).catch(() => showToast('Error applying leave.', true));
 });
 
-/* ================= PAYROLL MODAL LOGIC ================= */
+function openAdvanceModal() {
+    document.getElementById('add-advance-form').reset();
+    document.getElementById('adv_date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('advance-modal').classList.remove('hidden');
+}
+function closeAdvanceModal() { document.getElementById('advance-modal').classList.add('hidden'); }
+
+document.getElementById('add-advance-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    fetch(`${apiUrl}/advances`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            emp_id: document.getElementById('adv_emp_id').value,
+            date: document.getElementById('adv_date').value,
+            amount: document.getElementById('adv_amount').value
+        })
+    }).then(() => { showToast('Advance Added!', false); closeAdvanceModal(); });
+});
+
+function openAttendanceModal() {
+    document.getElementById('add-attendance-form').reset();
+    document.getElementById('att_date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('attendance-modal').classList.remove('hidden');
+}
+function closeAttendanceModal() { document.getElementById('attendance-modal').classList.add('hidden'); }
+
+document.getElementById('add-attendance-form').addEventListener('submit', function(e) {
+    e.preventDefault(); 
+    fetch(`${apiUrl}/attendance`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            emp_id: document.getElementById('att_emp_id').value,
+            date: document.getElementById('att_date').value,
+            status: document.getElementById('att_status').value,
+            ot_hours: document.getElementById('att_ot_hours').value
+        })
+    }).then(() => { showToast('Attendance marked!', false); closeAttendanceModal(); loadData('attendance'); });
+});
+
 function openPayrollModal() {
     document.getElementById('add-payroll-form').reset();
     const today = new Date();
@@ -298,69 +358,57 @@ function openPayrollModal() {
 }
 function closePayrollModal() { document.getElementById('payroll-modal').classList.add('hidden'); }
 
+function fetchAutoSalaryData() {
+    const empId = document.getElementById('pay_emp_id').value;
+    const monthYear = document.getElementById('pay_month_year').value;
+    if(!empId || !monthYear) return showToast('Enter Emp ID and Month first!', true);
+
+    fetch(`${apiUrl}/api/calculate-salary`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emp_id: empId, month_year: monthYear })
+    }).then(res => res.json()).then(data => {
+        if(data.error) return showToast(data.error, true);
+        
+        document.getElementById('pay_basic').value = data.basic_salary;
+        document.getElementById('pay_attended').value = data.attended_days;
+        document.getElementById('pay_ot_hours').value = data.total_ot_hours;
+        document.getElementById('pay_advances').value = data.total_advance;
+        calculateFinalSalary();
+        showToast('Data Fetched Successfully!', false);
+    });
+}
+
+function calculateFinalSalary() {
+    const basic = parseFloat(document.getElementById('pay_basic').value) || 0;
+    const attended = parseInt(document.getElementById('pay_attended').value) || 0;
+    const otHours = parseFloat(document.getElementById('pay_ot_hours').value) || 0;
+    const otRate = parseFloat(document.getElementById('pay_ot_rate').value) || 0;
+    const advances = parseFloat(document.getElementById('pay_advances').value) || 0;
+    const deductions = parseFloat(document.getElementById('pay_deductions').value) || 0;
+
+    const earnedBasic = (basic / 30) * attended;
+    const otPay = otHours * otRate;
+    const netSalary = (earnedBasic + otPay) - advances - deductions;
+    document.getElementById('pay_net').value = netSalary.toFixed(2);
+}
+
 document.getElementById('add-payroll-form').addEventListener('submit', function(e) {
     e.preventDefault(); 
-    const payrollData = {
-        emp_id: document.getElementById('pay_emp_id').value,
-        month_year: document.getElementById('pay_month_year').value,
-        basic_salary: document.getElementById('pay_basic').value,
-        deductions: document.getElementById('pay_deductions').value || 0,
-        payment_date: document.getElementById('pay_date').value
-    };
     fetch(`${apiUrl}/payroll`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payrollData)
-    })
-    .then(() => {
-        showToast('Payroll generated successfully!', false);
-        closePayrollModal(); loadData('payroll'); 
-    }).catch(() => showToast('Error generating payroll.', true));
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            emp_id: document.getElementById('pay_emp_id').value,
+            month_year: document.getElementById('pay_month_year').value,
+            basic_salary: document.getElementById('pay_basic').value,
+            attended_days: document.getElementById('pay_attended').value,
+            ot_pay: (parseFloat(document.getElementById('pay_ot_hours').value) || 0) * (parseFloat(document.getElementById('pay_ot_rate').value) || 0),
+            advances: document.getElementById('pay_advances').value,
+            deductions: document.getElementById('pay_deductions').value,
+            net_salary: document.getElementById('pay_net').value,
+            payment_date: document.getElementById('pay_date').value
+        })
+    }).then(() => { showToast('Payroll generated successfully!', false); closePayrollModal(); loadData('payroll'); });
 });
-
-/* ================= EXPORT FUNCTIONS (PDF & EXCEL) ================= */
-function exportToExcel() {
-    if (!currentTableData || currentTableData.length === 0) {
-        showToast('No data to export!', true);
-        return;
-    }
-    const ws = XLSX.utils.json_to_sheet(currentTableData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Data");
-    XLSX.writeFile(wb, `${currentEndpoint}_data.xlsx`);
-    showToast('Excel downloaded successfully!', false);
-}
-
-function exportToPDF() {
-    if (!currentTableData || currentTableData.length === 0) {
-        showToast('No data to export!', true);
-        return;
-    }
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    
-    doc.text(`${currentEndpoint.toUpperCase()} DATA`, 14, 15);
-    
-    const headers = Object.keys(currentTableData[0]);
-    const data = currentTableData.map(obj => Object.values(obj).map(val => {
-        if(val === null) return '-';
-        // Date format handling for PDF
-        if(typeof val === 'string' && val.includes('T') && val.includes('Z')) return val.split('T')[0];
-        return String(val);
-    }));
-    
-    doc.autoTable({
-        head: [headers.map(h => h.replace(/_/g, ' ').toUpperCase())],
-        body: data,
-        startY: 20,
-        theme: 'grid',
-        styles: { fontSize: 8, cellPadding: 2 },
-        headStyles: { fillColor: [14, 165, 233] }
-    });
-    
-    doc.save(`${currentEndpoint}_data.pdf`);
-    showToast('PDF downloaded successfully!', false);
-}
 
 window.onload = () => {
     const firstBtn = document.querySelector('.sidebar button');

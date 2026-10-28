@@ -1,10 +1,21 @@
-from flask import Flask, request, jsonify
+import os
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import mysql.connector
 from mysql.connector import Error
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 CORS(app)
+
+UPLOAD_FOLDER = 'uploads'
+PROFILE_FOLDER = os.path.join(UPLOAD_FOLDER, 'profiles')
+CV_FOLDER = os.path.join(UPLOAD_FOLDER, 'cvs')
+
+os.makedirs(PROFILE_FOLDER, exist_ok=True)
+os.makedirs(CV_FOLDER, exist_ok=True)
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 def create_db_connection():
     try:
@@ -19,6 +30,10 @@ def create_db_connection():
         print(f"Error: {e}")
         return None
 
+@app.route('/uploads/<folder>/<filename>')
+def serve_file(folder, filename):
+    return send_from_directory(os.path.join(app.config['UPLOAD_FOLDER'], folder), filename)
+
 @app.route('/employees', methods=['GET', 'POST'])
 def handle_employees():
     connection = create_db_connection()
@@ -29,9 +44,36 @@ def handle_employees():
             cursor.execute("SELECT * FROM employees ORDER BY emp_id DESC")
             return jsonify(cursor.fetchall()), 200
         elif request.method == 'POST':
-            data = request.json
-            query = "INSERT INTO employees (first_name, last_name, email, phone, department, hire_date, basic_salary) VALUES (%s, %s, %s, %s, %s, %s, %s)"
-            cursor.execute(query, (data.get('first_name'), data.get('last_name'), data.get('email'), data.get('phone'), data.get('department'), data.get('hire_date'), data.get('basic_salary')))
+            data = request.form
+            
+            profile_pic = request.files.get('profile_picture')
+            cv_file = request.files.get('cv_file')
+            
+            profile_filename = None
+            cv_filename = None
+            
+            if profile_pic and profile_pic.filename != '':
+                profile_filename = secure_filename(profile_pic.filename)
+                profile_pic.save(os.path.join(PROFILE_FOLDER, profile_filename))
+                
+            if cv_file and cv_file.filename != '':
+                cv_filename = secure_filename(cv_file.filename)
+                cv_file.save(os.path.join(CV_FOLDER, cv_filename))
+
+            hire_date = data.get('hire_date') if data.get('hire_date') != '' else None
+            dob = data.get('dob') if data.get('dob') != '' else None
+            basic_salary = data.get('basic_salary') if data.get('basic_salary') != '' else 0.0
+
+            query = """INSERT INTO employees 
+                       (first_name, last_name, email, phone, department, hire_date, basic_salary, nic, gender, dob, address, emergency_contact, designation, bank_name, bank_account, epf_number, employment_type, branch, reporting_manager, employee_status, blood_group, marital_status, profile_picture, cv_file) 
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+            cursor.execute(query, (
+                data.get('first_name'), data.get('last_name'), data.get('email'), data.get('phone'), data.get('department'), 
+                hire_date, basic_salary, data.get('nic'), data.get('gender'), dob, 
+                data.get('address'), data.get('emergency_contact'), data.get('designation'), data.get('bank_name'), data.get('bank_account'),
+                data.get('epf_number'), data.get('employment_type'), data.get('branch'), data.get('reporting_manager'), 
+                data.get('employee_status'), data.get('blood_group'), data.get('marital_status'), profile_filename, cv_filename
+            ))
             connection.commit()
             return jsonify({"message": "Employee added successfully!"}), 201
     except Exception as e: return jsonify({"error": str(e)}), 500
@@ -43,13 +85,47 @@ def update_delete_employee(id):
     connection = create_db_connection()
     if connection is None: return jsonify({"error": "DB failed"}), 500
     try:
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
         if request.method == 'PUT':
-            data = request.json
-            query = "UPDATE employees SET first_name=%s, last_name=%s, email=%s, phone=%s, department=%s, hire_date=%s, basic_salary=%s WHERE emp_id=%s"
-            cursor.execute(query, (data.get('first_name'), data.get('last_name'), data.get('email'), data.get('phone'), data.get('department'), data.get('hire_date'), data.get('basic_salary'), id))
+            data = request.form
+            
+            profile_pic = request.files.get('profile_picture')
+            cv_file = request.files.get('cv_file')
+            
+            cursor.execute("SELECT profile_picture, cv_file FROM employees WHERE emp_id = %s", (id,))
+            existing_emp = cursor.fetchone()
+            
+            profile_filename = existing_emp.get('profile_picture') if existing_emp else None
+            cv_filename = existing_emp.get('cv_file') if existing_emp else None
+            
+            if profile_pic and profile_pic.filename != '':
+                profile_filename = secure_filename(profile_pic.filename)
+                profile_pic.save(os.path.join(PROFILE_FOLDER, profile_filename))
+                
+            if cv_file and cv_file.filename != '':
+                cv_filename = secure_filename(cv_file.filename)
+                cv_file.save(os.path.join(CV_FOLDER, cv_filename))
+
+            hire_date = data.get('hire_date') if data.get('hire_date') != '' else None
+            dob = data.get('dob') if data.get('dob') != '' else None
+            basic_salary = data.get('basic_salary') if data.get('basic_salary') != '' else 0.0
+
+            query = """UPDATE employees SET 
+                       first_name=%s, last_name=%s, email=%s, phone=%s, department=%s, hire_date=%s, basic_salary=%s, 
+                       nic=%s, gender=%s, dob=%s, address=%s, emergency_contact=%s, designation=%s, bank_name=%s, bank_account=%s,
+                       epf_number=%s, employment_type=%s, branch=%s, reporting_manager=%s, employee_status=%s, blood_group=%s, marital_status=%s,
+                       profile_picture=%s, cv_file=%s
+                       WHERE emp_id=%s"""
+            cursor.execute(query, (
+                data.get('first_name'), data.get('last_name'), data.get('email'), data.get('phone'), data.get('department'), 
+                hire_date, basic_salary, data.get('nic'), data.get('gender'), dob, 
+                data.get('address'), data.get('emergency_contact'), data.get('designation'), data.get('bank_name'), data.get('bank_account'),
+                data.get('epf_number'), data.get('employment_type'), data.get('branch'), data.get('reporting_manager'), 
+                data.get('employee_status'), data.get('blood_group'), data.get('marital_status'), profile_filename, cv_filename, id
+            ))
             connection.commit()
             return jsonify({"message": "Employee updated successfully!"}), 200
+            
         elif request.method == 'DELETE':
             cursor.execute("DELETE FROM employees WHERE emp_id=%s", (id,))
             connection.commit()

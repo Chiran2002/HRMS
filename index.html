@@ -35,26 +35,26 @@
         </header>
 
         <div class="dashboard-cards">
-            <div class="card">
+            <div class="card" onclick="filterByCard(1)" style="cursor: pointer;">
                 <div class="card-info">
-                    <h3>Total Employees</h3>
-                    <p id="total-count">0</p>
+                    <h3 id="card-1-title">Total Employees</h3>
+                    <p id="card-1-value">0</p>
                 </div>
-                <div class="card-icon" style="color: #38bdf8; background: rgba(56, 189, 248, 0.1);"><i class="fa-solid fa-users"></i></div>
+                <div class="card-icon" id="card-1-icon" style="color: #38bdf8; background: rgba(56, 189, 248, 0.1);"><i class="fa-solid fa-users" id="icon-1"></i></div>
             </div>
-            <div class="card">
+            <div class="card" onclick="filterByCard(2)" style="cursor: pointer;">
                 <div class="card-info">
-                    <h3>Departments</h3>
-                    <p id="total-departments">0</p>
+                    <h3 id="card-2-title">Departments</h3>
+                    <p id="card-2-value">0</p>
                 </div>
-                <div class="card-icon" style="color: #a78bfa; background: rgba(167, 139, 250, 0.1);"><i class="fa-solid fa-building"></i></div>
+                <div class="card-icon" id="card-2-icon" style="color: #a78bfa; background: rgba(167, 139, 250, 0.1);"><i class="fa-solid fa-building" id="icon-2"></i></div>
             </div>
-            <div class="card">
+            <div class="card" onclick="filterByCard(3)" style="cursor: pointer;">
                 <div class="card-info">
-                    <h3>Total Monthly Salary</h3>
-                    <p id="total-salary">Rs. 0</p>
+                    <h3 id="card-3-title">Total Monthly Salary</h3>
+                    <p id="card-3-value">Rs. 0</p>
                 </div>
-                <div class="card-icon" style="color: #34d399; background: rgba(52, 211, 153, 0.1);"><i class="fa-solid fa-money-bill-wave"></i></div>
+                <div class="card-icon" id="card-3-icon" style="color: #34d399; background: rgba(52, 211, 153, 0.1);"><i class="fa-solid fa-money-bill-wave" id="icon-3"></i></div>
             </div>
         </div>
 
@@ -80,20 +80,90 @@
     </div>
 
     <div id="employee-modal" class="modal hidden">
-        <div class="modal-content">
+        <div class="modal-content" style="width: 700px; max-height: 90vh; overflow-y: auto;">
             <div class="modal-header">
                 <h2 id="modal-title">Add New Employee</h2>
                 <span class="close-btn" onclick="closeModal()">&times;</span>
             </div>
             <form id="add-employee-form">
-                <div class="form-group"><label>First Name</label><input type="text" id="first_name" required></div>
-                <div class="form-group"><label>Last Name</label><input type="text" id="last_name" required></div>
-                <div class="form-group"><label>Email</label><input type="email" id="email" required></div>
-                <div class="form-group"><label>Phone</label><input type="text" id="phone"></div>
-                <div class="form-group"><label>Department</label><input type="text" id="department"></div>
-                <div class="form-group"><label>Hire Date</label><input type="date" id="hire_date"></div>
-                <div class="form-group"><label>Basic Salary</label><input type="number" id="basic_salary" step="0.01"></div>
-                <button type="submit" class="btn-primary" style="width: 100%; margin-top: 15px; justify-content: center;">Save Employee</button>
+                <h3 style="color: var(--primary-color); font-size: 14px; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">Personal Details</h3>
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex:1"><label>First Name</label><input type="text" id="first_name" required></div>
+                    <div class="form-group" style="flex:1"><label>Last Name</label><input type="text" id="last_name" required></div>
+                    <div class="form-group" style="flex:1"><label>NIC Number</label><input type="text" id="nic" required></div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex:1"><label>Date of Birth</label><input type="date" id="dob" required></div>
+                    <div class="form-group" style="flex:1"><label>Gender</label>
+                        <select id="gender" required style="width: 100%; padding: 10px; border-radius: 6px; background-color: var(--bg-color); color: var(--text-main); border: 1px solid var(--border-color);">
+                            <option value="Male">Male</option><option value="Female">Female</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex:1"><label>Marital Status</label>
+                        <select id="marital_status" style="width: 100%; padding: 10px; border-radius: 6px; background-color: var(--bg-color); color: var(--text-main); border: 1px solid var(--border-color);">
+                            <option value="Single">Single</option><option value="Married">Married</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex:1"><label>Blood Group</label>
+                        <select id="blood_group" style="width: 100%; padding: 10px; border-radius: 6px; background-color: var(--bg-color); color: var(--text-main); border: 1px solid var(--border-color);">
+                            <option value="A+">A+</option><option value="A-">A-</option><option value="B+">B+</option><option value="B-">B-</option>
+                            <option value="AB+">AB+</option><option value="AB-">AB-</option><option value="O+">O+</option><option value="O-">O-</option>
+                        </select>
+                    </div>
+                </div>
+
+                <h3 style="color: var(--primary-color); font-size: 14px; margin: 15px 0 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">Contact Details</h3>
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex:1"><label>Email</label><input type="email" id="email" required></div>
+                    <div class="form-group" style="flex:1"><label>Phone</label><input type="text" id="phone" required></div>
+                    <div class="form-group" style="flex:1"><label>Emergency Contact</label><input type="text" id="emergency_contact" required></div>
+                </div>
+                <div class="form-group"><label>Permanent Address</label><input type="text" id="address" required></div>
+
+                <h3 style="color: var(--primary-color); font-size: 14px; margin: 15px 0 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">Employment Details</h3>
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex:1"><label>EPF Number</label><input type="text" id="epf_number"></div>
+                    <div class="form-group" style="flex:1"><label>Employment Type</label>
+                        <select id="employment_type" style="width: 100%; padding: 10px; border-radius: 6px; background-color: var(--bg-color); color: var(--text-main); border: 1px solid var(--border-color);">
+                            <option value="Permanent">Permanent</option><option value="Probation">Probation</option><option value="Contract">Contract</option><option value="Intern">Intern</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex:1"><label>Status</label>
+                        <select id="employee_status" style="width: 100%; padding: 10px; border-radius: 6px; background-color: var(--bg-color); color: var(--text-main); border: 1px solid var(--border-color);">
+                            <option value="Active">Active</option><option value="Resigned">Resigned</option><option value="Terminated">Terminated</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex:1"><label>Department</label><input type="text" id="department" required></div>
+                    <div class="form-group" style="flex:1"><label>Designation</label><input type="text" id="designation" required></div>
+                    <div class="form-group" style="flex:1"><label>Reporting Manager</label><input type="text" id="reporting_manager"></div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex:1"><label>Branch / Location</label><input type="text" id="branch" value="Head Office"></div>
+                    <div class="form-group" style="flex:1"><label>Hire Date</label><input type="date" id="hire_date" required></div>
+                    <div class="form-group" style="flex:1"><label>Basic Salary (Rs.)</label><input type="number" id="basic_salary" step="0.01" required></div>
+                </div>
+
+                <h3 style="color: var(--primary-color); font-size: 14px; margin: 15px 0 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">Bank Details</h3>
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex:1"><label>Bank Name</label><input type="text" id="bank_name" required></div>
+                    <div class="form-group" style="flex:1"><label>Account Number</label><input type="text" id="bank_account" required></div>
+                </div>
+
+                <h3 style="color: var(--primary-color); font-size: 14px; margin: 15px 0 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">Documents & Uploads</h3>
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex:1">
+                        <label>Profile Picture (Image)</label>
+                        <input type="file" id="profile_picture" accept="image/*" style="padding: 7px;">
+                    </div>
+                    <div class="form-group" style="flex:1">
+                        <label>Employee CV (PDF/Word)</label>
+                        <input type="file" id="cv_file" accept=".pdf,.doc,.docx" style="padding: 7px;">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary" style="width: 100%; margin-top: 15px; justify-content: center; font-size: 15px; padding: 12px;">Save Employee Record</button>
             </form>
         </div>
     </div>
@@ -135,6 +205,7 @@
                         <option value="Present">Present</option>
                         <option value="Absent">Absent</option>
                         <option value="On Leave">On Leave</option>
+                        <option value="Out of Office">Out of Office</option>
                     </select>
                 </div>
                 <div class="form-group"><label>OT Hours (If any)</label><input type="number" id="att_ot_hours" step="0.5" value="0"></div>

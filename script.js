@@ -45,8 +45,6 @@ function updateDashboardAndButtons(data) {
     const mainButton = document.getElementById('main-action-btn');
     if(!mainButton) return;
     
-    document.getElementById('total-count').textContent = data.length || 0;
-    
     let advBtn = document.getElementById('adv-btn');
     if(!advBtn) {
         advBtn = document.createElement('button');
@@ -56,7 +54,6 @@ function updateDashboardAndButtons(data) {
         advBtn.onclick = openAdvanceModal;
         document.querySelector('.controls-bar > div:last-child').insertBefore(advBtn, mainButton);
     }
-    
     advBtn.style.display = 'none';
 
     if (currentEndpoint === 'employees') {
@@ -64,33 +61,95 @@ function updateDashboardAndButtons(data) {
         mainButton.onclick = openModal;
         mainButton.style.display = 'flex';
         
+        document.getElementById('card-1-title').textContent = 'Total Employees';
+        document.getElementById('card-1-value').textContent = data.length || 0;
+        document.getElementById('icon-1').className = 'fa-solid fa-users';
+        
         const departments = new Set(data.map(emp => emp.department).filter(dep => dep && dep.trim() !== ''));
-        document.getElementById('total-departments').textContent = departments.size;
+        document.getElementById('card-2-title').textContent = 'Departments';
+        document.getElementById('card-2-value').textContent = departments.size;
+        document.getElementById('icon-2').className = 'fa-solid fa-building';
+        
         const totalSalary = data.reduce((sum, emp) => sum + (parseFloat(emp.basic_salary) || 0), 0);
-        document.getElementById('total-salary').textContent = 'Rs. ' + totalSalary.toLocaleString();
+        document.getElementById('card-3-title').textContent = 'Total Monthly Salary';
+        document.getElementById('card-3-value').textContent = 'Rs. ' + totalSalary.toLocaleString();
+        document.getElementById('icon-3').className = 'fa-solid fa-money-bill-wave';
         
     } else if (currentEndpoint === 'attendance') {
         mainButton.innerHTML = '<i class="fa-solid fa-clock"></i> Mark Attendance';
         mainButton.onclick = openAttendanceModal;
         mainButton.style.display = 'flex';
-        document.getElementById('total-departments').textContent = '-';
-        document.getElementById('total-salary').textContent = '-';
+        
+        const today = new Date().toISOString().split('T')[0];
+        const todaysData = data.filter(d => d.record_date && d.record_date.startsWith(today));
+        
+        document.getElementById('card-1-title').textContent = 'Present Today';
+        document.getElementById('card-1-value').textContent = todaysData.filter(d => d.status === 'Present').length;
+        document.getElementById('icon-1').className = 'fa-solid fa-user-check';
+
+        document.getElementById('card-2-title').textContent = 'Out of Office';
+        document.getElementById('card-2-value').textContent = todaysData.filter(d => d.status === 'Out of Office').length;
+        document.getElementById('icon-2').className = 'fa-solid fa-person-walking-luggage';
+
+        document.getElementById('card-3-title').textContent = 'On Leave Today';
+        document.getElementById('card-3-value').textContent = todaysData.filter(d => d.status === 'On Leave').length;
+        document.getElementById('icon-3').className = 'fa-solid fa-user-minus';
         
     } else if (currentEndpoint === 'leaves') {
         mainButton.innerHTML = '<i class="fa-solid fa-calendar-plus"></i> Apply Leave';
         mainButton.onclick = openLeaveModal;
         mainButton.style.display = 'flex';
-        document.getElementById('total-departments').textContent = '-';
-        document.getElementById('total-salary').textContent = '-';
+        
+        document.getElementById('card-1-title').textContent = 'Total Leaves';
+        document.getElementById('card-1-value').textContent = data.length || 0;
+        document.getElementById('icon-1').className = 'fa-solid fa-calendar-minus';
+        
+        document.getElementById('card-2-title').textContent = 'Pending Leaves';
+        document.getElementById('card-2-value').textContent = data.filter(d => d.status === 'Pending').length;
+        document.getElementById('icon-2').className = 'fa-solid fa-clock';
+        
+        document.getElementById('card-3-title').textContent = 'Approved Leaves';
+        document.getElementById('card-3-value').textContent = data.filter(d => d.status === 'Approved').length;
+        document.getElementById('icon-3').className = 'fa-solid fa-check-circle';
         
     } else if (currentEndpoint === 'payroll') {
         mainButton.innerHTML = '<i class="fa-solid fa-file-invoice-dollar"></i> Generate Payroll';
         mainButton.onclick = openPayrollModal;
         mainButton.style.display = 'flex';
         advBtn.style.display = 'flex';
-        document.getElementById('total-departments').textContent = '-';
-        document.getElementById('total-salary').textContent = '-';
+        
+        document.getElementById('card-1-title').textContent = 'Total Payrolls';
+        document.getElementById('card-1-value').textContent = data.length || 0;
+        document.getElementById('icon-1').className = 'fa-solid fa-file-invoice';
+        
+        document.getElementById('card-2-title').textContent = '-';
+        document.getElementById('card-2-value').textContent = '-';
+        document.getElementById('icon-2').className = 'fa-solid fa-minus';
+        
+        document.getElementById('card-3-title').textContent = '-';
+        document.getElementById('card-3-value').textContent = '-';
+        document.getElementById('icon-3').className = 'fa-solid fa-minus';
     }
+}
+
+function filterByCard(cardIndex) {
+    if(currentEndpoint !== 'attendance') {
+        renderTable(currentTableData);
+        return;
+    }
+    
+    const today = new Date().toISOString().split('T')[0];
+    let filteredData = [];
+    
+    if (cardIndex === 1) {
+        filteredData = currentTableData.filter(d => d.record_date && d.record_date.startsWith(today) && d.status === 'Present');
+    } else if (cardIndex === 2) {
+        filteredData = currentTableData.filter(d => d.record_date && d.record_date.startsWith(today) && d.status === 'Out of Office');
+    } else if (cardIndex === 3) {
+        filteredData = currentTableData.filter(d => d.record_date && d.record_date.startsWith(today) && d.status === 'On Leave');
+    }
+    
+    renderTable(filteredData);
 }
 
 document.getElementById('search-input').addEventListener('input', function(e) {
@@ -105,67 +164,84 @@ document.getElementById('search-input').addEventListener('input', function(e) {
 function renderTable(data) {
     const tableHead = document.getElementById('table-head');
     const tableBody = document.getElementById('table-body');
-    tableHead.innerHTML = '';
-    tableBody.innerHTML = '';
+    tableHead.innerHTML = ''; tableBody.innerHTML = '';
 
     if (!data || data.length === 0) {
         tableBody.innerHTML = '<tr><td colspan="100%" style="text-align:center; padding: 30px; color: #94a3b8;">No matching data found</td></tr>';
         return;
     }
 
-    const headers = Object.keys(data[0]);
+    let displayColumns = [];
+    if (currentEndpoint === 'employees') {
+        displayColumns = ['emp_id', 'first_name', 'department', 'designation', 'phone', 'employee_status'];
+    } else if (currentEndpoint === 'attendance') {
+        displayColumns = ['attendance_id', 'employee_name', 'record_date', 'status', 'ot_hours'];
+    } else if (currentEndpoint === 'leaves') {
+        displayColumns = ['leave_id', 'employee_name', 'leave_type', 'start_date', 'end_date', 'status'];
+    } else if (currentEndpoint === 'payroll') {
+        displayColumns = ['payroll_id', 'employee_name', 'month_year', 'basic_salary', 'net_salary', 'payment_date'];
+    } else {
+        displayColumns = Object.keys(data[0]).filter(k => k !== 'profile_picture' && k !== 'cv_file');
+    }
+
     const headerRow = document.createElement('tr');
-    headers.forEach(headerText => {
+    displayColumns.forEach(key => {
         const th = document.createElement('th');
-        th.textContent = headerText.replace(/_/g, ' ').toUpperCase(); 
+        if (key === 'first_name') th.textContent = 'EMPLOYEE INFO';
+        else th.textContent = key.replace(/_/g, ' ').toUpperCase(); 
         headerRow.appendChild(th);
     });
     
     if(currentEndpoint === 'employees') {
-        const th = document.createElement('th');
-        th.textContent = 'ACTIONS';
-        headerRow.appendChild(th);
+        const th = document.createElement('th'); th.textContent = 'ACTIONS'; headerRow.appendChild(th);
     }
     tableHead.appendChild(headerRow);
 
     data.forEach(item => {
         const row = document.createElement('tr');
-        headers.forEach(key => {
+        displayColumns.forEach(key => {
             const td = document.createElement('td');
             
-            if((key === 'hire_date' || key === 'date' || key === 'record_date' || key === 'start_date' || key === 'end_date' || key === 'payment_date') && item[key]) {
+            if((key === 'hire_date' || key === 'date' || key === 'record_date' || key === 'start_date' || key === 'end_date' || key === 'payment_date' || key === 'dob') && item[key]) {
                 try { td.textContent = new Date(item[key]).toISOString().split('T')[0]; } 
                 catch { td.textContent = item[key]; }
             } 
-            else if (key === 'status') {
+            else if (key === 'status' || key === 'employee_status') {
                 let badgeClass = 'badge-info';
                 const statusStr = String(item[key]).toLowerCase();
-                if (statusStr.includes('present') || statusStr.includes('approved')) badgeClass = 'badge-success';
-                else if (statusStr.includes('absent') || statusStr.includes('rejected')) badgeClass = 'badge-danger';
-                else if (statusStr.includes('pending') || statusStr.includes('half')) badgeClass = 'badge-warning';
-                
+                if (statusStr.includes('present') || statusStr.includes('approved') || statusStr.includes('active')) badgeClass = 'badge-success';
+                else if (statusStr.includes('absent') || statusStr.includes('rejected') || statusStr.includes('terminated')) badgeClass = 'badge-danger';
+                else if (statusStr.includes('pending') || statusStr.includes('half') || statusStr.includes('resigned') || statusStr.includes('out of office')) badgeClass = 'badge-warning';
                 td.innerHTML = `<span class="badge ${badgeClass}">${item[key]}</span>`;
             }
             else if (key === 'employee_name' || key === 'first_name') {
                 const nameStr = key === 'employee_name' ? item[key] : `${item.first_name} ${item.last_name || ''}`.trim();
-                const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(nameStr)}&background=random&color=fff&bold=true`;
+                const avatarUrl = (item.profile_picture) ? `${apiUrl}/uploads/profiles/${item.profile_picture}` : `https://ui-avatars.com/api/?name=${encodeURIComponent(nameStr)}&background=random&color=fff&bold=true`;
                 td.innerHTML = `
                     <div class="emp-name-cell">
-                        <img src="${avatarUrl}" class="emp-avatar" alt="Avatar">
-                        <span>${item[key]}</span>
+                        <img src="${avatarUrl}" class="emp-avatar" alt="Avatar" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(nameStr)}&background=random&color=fff&bold=true'">
+                        <div>
+                           <div style="font-weight: 500;">${nameStr}</div>
+                           <div style="font-size: 12px; color: var(--text-muted);">${item.email || ''}</div>
+                        </div>
                     </div>
                 `;
             } 
-            else {
-                td.textContent = item[key] !== null ? item[key] : '-'; 
-            }
+            else { td.textContent = item[key] !== null ? item[key] : '-'; }
             row.appendChild(td);
         });
 
         if(currentEndpoint === 'employees') {
             const td = document.createElement('td');
             td.className = 'action-buttons';
+            
+            let cvButton = '';
+            if(item.cv_file) {
+                cvButton = `<a href="${apiUrl}/uploads/cvs/${item.cv_file}" target="_blank" class="btn-secondary" style="padding: 8px; border:none; margin-right:5px;" title="View CV"><i class="fa-solid fa-file-pdf"></i></a>`;
+            }
+            
             td.innerHTML = `
+                ${cvButton}
                 <button class="btn-edit" onclick="editEmployee(${item.emp_id})" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
                 <button class="btn-delete" onclick="deleteEmployee(${item.emp_id})" title="Delete"><i class="fa-solid fa-trash"></i></button>
             `;
@@ -203,14 +279,25 @@ function exportToPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     doc.text(`${currentEndpoint.toUpperCase()} DATA`, 14, 15);
-    const headers = Object.keys(currentTableData[0]);
-    const data = currentTableData.map(obj => Object.values(obj).map(val => {
-        if(val === null) return '-';
-        if(typeof val === 'string' && val.includes('T') && val.includes('Z')) return val.split('T')[0];
-        return String(val);
-    }));
+    
+    let exportColumns = [];
+    if(currentEndpoint === 'employees') {
+        exportColumns = ['emp_id', 'first_name', 'last_name', 'phone', 'department', 'designation', 'employee_status'];
+    } else {
+        exportColumns = Object.keys(currentTableData[0]).filter(k => k !== 'profile_picture' && k !== 'cv_file');
+    }
+
+    const data = currentTableData.map(obj => {
+        return exportColumns.map(key => {
+            const val = obj[key];
+            if(val === null) return '-';
+            if(typeof val === 'string' && val.includes('T') && val.includes('Z')) return val.split('T')[0];
+            return String(val);
+        });
+    });
+
     doc.autoTable({
-        head: [headers.map(h => h.replace(/_/g, ' ').toUpperCase())],
+        head: [exportColumns.map(h => h.replace(/_/g, ' ').toUpperCase())],
         body: data,
         startY: 20,
         theme: 'grid',
@@ -239,15 +326,21 @@ function editEmployee(id) {
     const employee = currentTableData.find(emp => emp.emp_id === id);
     if(!employee) return;
     document.getElementById('modal-title').textContent = 'Edit Employee';
-    document.getElementById('first_name').value = employee.first_name || '';
-    document.getElementById('last_name').value = employee.last_name || '';
-    document.getElementById('email').value = employee.email || '';
-    document.getElementById('phone').value = employee.phone || '';
-    document.getElementById('department').value = employee.department || '';
-    if(employee.hire_date) {
-        document.getElementById('hire_date').value = new Date(employee.hire_date).toISOString().split('T')[0];
-    } else { document.getElementById('hire_date').value = ''; }
-    document.getElementById('basic_salary').value = employee.basic_salary || '';
+    
+    const fields = ['first_name', 'last_name', 'email', 'phone', 'department', 'nic', 'gender', 'address', 'emergency_contact', 'designation', 'bank_name', 'bank_account', 'epf_number', 'employment_type', 'branch', 'reporting_manager', 'employee_status', 'blood_group', 'marital_status', 'basic_salary'];
+    
+    fields.forEach(field => {
+        if(document.getElementById(field)) {
+            document.getElementById(field).value = employee[field] || '';
+        }
+    });
+    
+    if(employee.hire_date) { document.getElementById('hire_date').value = new Date(employee.hire_date).toISOString().split('T')[0]; } else { document.getElementById('hire_date').value = ''; }
+    if(employee.dob) { document.getElementById('dob').value = new Date(employee.dob).toISOString().split('T')[0]; } else { document.getElementById('dob').value = ''; }
+    
+    document.getElementById('profile_picture').value = '';
+    document.getElementById('cv_file').value = '';
+    
     document.getElementById('employee-modal').classList.remove('hidden');
 }
 
@@ -261,21 +354,26 @@ function deleteEmployee(id) {
 
 document.getElementById('add-employee-form').addEventListener('submit', function(e) {
     e.preventDefault(); 
-    const employeeData = {
-        first_name: document.getElementById('first_name').value.trim(),
-        last_name: document.getElementById('last_name').value.trim(),
-        email: document.getElementById('email').value.trim(),
-        phone: document.getElementById('phone').value.trim(),
-        department: document.getElementById('department').value.trim(),
-        hire_date: document.getElementById('hire_date').value,
-        basic_salary: document.getElementById('basic_salary').value
-    };
+    
+    const formData = new FormData();
+    const fields = ['first_name', 'last_name', 'email', 'phone', 'department', 'hire_date', 'basic_salary', 'nic', 'gender', 'dob', 'address', 'emergency_contact', 'designation', 'bank_name', 'bank_account', 'epf_number', 'employment_type', 'branch', 'reporting_manager', 'employee_status', 'blood_group', 'marital_status'];
+    
+    fields.forEach(field => {
+        formData.append(field, document.getElementById(field).value.trim());
+    });
+    
+    const profilePic = document.getElementById('profile_picture').files[0];
+    if(profilePic) formData.append('profile_picture', profilePic);
+    
+    const cvFile = document.getElementById('cv_file').files[0];
+    if(cvFile) formData.append('cv_file', cvFile);
+
     const method = isEditMode ? 'PUT' : 'POST';
     const url = isEditMode ? `${apiUrl}/employees/${editEmployeeId}` : `${apiUrl}/employees`;
+    
     fetch(url, {
         method: method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(employeeData)
+        body: formData 
     })
     .then(() => {
         showToast(isEditMode ? 'Employee updated!' : 'Employee added!', false);

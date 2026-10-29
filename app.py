@@ -134,40 +134,56 @@ def update_delete_employee(id):
     finally:
         if connection.is_connected(): cursor.close(); connection.close()
 
-@app.route('/attendance', methods=['GET', 'POST'])
-def handle_attendance():
+# New Unified Endpoint for Time & Attendance
+@app.route('/time_attendance', methods=['GET'])
+def handle_time_attendance():
     connection = create_db_connection()
     try:
         cursor = connection.cursor(dictionary=True)
-        if request.method == 'GET':
-            query = "SELECT a.attendance_id, a.emp_id, CONCAT(e.first_name, ' ', e.last_name) AS employee_name, a.record_date, a.status, a.ot_hours FROM attendance a JOIN employees e ON a.emp_id = e.emp_id ORDER BY a.record_date DESC;"
-            cursor.execute(query)
-            return jsonify(cursor.fetchall()), 200
-        elif request.method == 'POST':
-            data = request.json
-            query = "INSERT INTO attendance (emp_id, record_date, status, ot_hours) VALUES (%s, %s, %s, %s)"
-            cursor.execute(query, (data.get('emp_id'), data.get('date'), data.get('status'), data.get('ot_hours', 0)))
-            connection.commit()
-            return jsonify({"message": "Attendance marked!"}), 201
+        query = """
+            SELECT 'Attendance' AS record_type, a.attendance_id AS id, a.emp_id, 
+                   CONCAT(e.first_name, ' ', e.last_name) AS employee_name, 
+                   e.profile_picture, e.email,
+                   a.record_date AS date, a.status, CONCAT(a.ot_hours, ' OT Hours') AS details 
+            FROM attendance a JOIN employees e ON a.emp_id = e.emp_id
+            UNION ALL
+            SELECT 'Leave' AS record_type, l.leave_id AS id, l.emp_id, 
+                   CONCAT(e.first_name, ' ', e.last_name) AS employee_name, 
+                   e.profile_picture, e.email,
+                   l.start_date AS date, l.status, CONCAT(l.leave_type, ' Leave') AS details 
+            FROM leaves l JOIN employees e ON l.emp_id = e.emp_id
+            ORDER BY date DESC
+        """
+        cursor.execute(query)
+        return jsonify(cursor.fetchall()), 200
     except Exception as e: return jsonify({"error": str(e)}), 500
     finally:
         if connection.is_connected(): cursor.close(); connection.close()
 
-@app.route('/leaves', methods=['GET', 'POST'])
-def handle_leaves():
+@app.route('/attendance', methods=['POST'])
+def add_attendance():
     connection = create_db_connection()
     try:
-        cursor = connection.cursor(dictionary=True)
-        if request.method == 'GET':
-            query = "SELECT l.leave_id, l.emp_id, CONCAT(e.first_name, ' ', e.last_name) AS employee_name, l.leave_type, l.start_date, l.end_date, l.status FROM leaves l JOIN employees e ON l.emp_id = e.emp_id ORDER BY l.start_date DESC;"
-            cursor.execute(query)
-            return jsonify(cursor.fetchall()), 200
-        elif request.method == 'POST':
-            data = request.json
-            query = "INSERT INTO leaves (emp_id, leave_type, start_date, end_date, status) VALUES (%s, %s, %s, %s, %s)"
-            cursor.execute(query, (data.get('emp_id'), data.get('leave_type'), data.get('start_date'), data.get('end_date'), data.get('status', 'Pending')))
-            connection.commit()
-            return jsonify({"message": "Leave applied successfully!"}), 201
+        cursor = connection.cursor()
+        data = request.json
+        query = "INSERT INTO attendance (emp_id, record_date, status, ot_hours) VALUES (%s, %s, %s, %s)"
+        cursor.execute(query, (data.get('emp_id'), data.get('date'), data.get('status'), data.get('ot_hours', 0)))
+        connection.commit()
+        return jsonify({"message": "Attendance marked!"}), 201
+    except Exception as e: return jsonify({"error": str(e)}), 500
+    finally:
+        if connection.is_connected(): cursor.close(); connection.close()
+
+@app.route('/leaves', methods=['POST'])
+def apply_leave():
+    connection = create_db_connection()
+    try:
+        cursor = connection.cursor()
+        data = request.json
+        query = "INSERT INTO leaves (emp_id, leave_type, start_date, end_date, status) VALUES (%s, %s, %s, %s, %s)"
+        cursor.execute(query, (data.get('emp_id'), data.get('leave_type'), data.get('start_date'), data.get('end_date'), data.get('status', 'Pending')))
+        connection.commit()
+        return jsonify({"message": "Leave applied successfully!"}), 201
     except Exception as e: return jsonify({"error": str(e)}), 500
     finally:
         if connection.is_connected(): cursor.close(); connection.close()

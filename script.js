@@ -1,11 +1,20 @@
 const apiUrl = 'http://127.0.0.1:5000';
 let currentEndpoint = 'employees'; 
 let currentTableData = []; 
+let currentFilteredData = [];
 let isEditMode = false;
 let editEmployeeId = null;
+let activeCardIndex = 0; 
+
+function getFormattedDate(dateStr) {
+    if (!dateStr) return '';
+    try { return new Date(dateStr).toISOString().split('T')[0]; } 
+    catch(e) { return String(dateStr); }
+}
 
 function loadData(endpoint, buttonElement = null) {
     currentEndpoint = endpoint;
+    activeCardIndex = 0; 
     document.getElementById('search-input').value = '';
     const titleElement = document.getElementById('page-title');
     titleElement.textContent = endpoint.charAt(0).toUpperCase() + endpoint.slice(1) + ' Data';
@@ -31,8 +40,14 @@ function loadData(endpoint, buttonElement = null) {
         .then(data => {
             loader.classList.add('hidden');
             currentTableData = data; 
+            currentFilteredData = data;
             updateDashboardAndButtons(data); 
-            renderTable(data);
+            
+            if(currentEndpoint !== 'time_attendance') {
+                renderTable(data);
+            } else {
+                applyTimeAttendanceFilter(); 
+            }
         })
         .catch(error => {
             loader.classList.add('hidden');
@@ -56,7 +71,21 @@ function updateDashboardAndButtons(data) {
     }
     advBtn.style.display = 'none';
 
+    let leaveBtn = document.getElementById('leave-btn');
+    if(!leaveBtn) {
+        leaveBtn = document.createElement('button');
+        leaveBtn.id = 'leave-btn';
+        leaveBtn.className = 'btn-secondary';
+        leaveBtn.innerHTML = '<i class="fa-solid fa-calendar-plus"></i> Apply Leave';
+        leaveBtn.onclick = openLeaveModal;
+        document.querySelector('.controls-bar > div:last-child').insertBefore(leaveBtn, mainButton);
+    }
+    leaveBtn.style.display = 'none';
+    
+    const dateFilterContainer = document.getElementById('date-filter-container');
+
     if (currentEndpoint === 'employees') {
+        if(dateFilterContainer) { dateFilterContainer.classList.add('hidden'); dateFilterContainer.style.display = 'none'; }
         mainButton.innerHTML = '<i class="fa-solid fa-plus"></i> Add Employee';
         mainButton.onclick = openModal;
         mainButton.style.display = 'flex';
@@ -75,44 +104,31 @@ function updateDashboardAndButtons(data) {
         document.getElementById('card-3-value').textContent = 'Rs. ' + totalSalary.toLocaleString();
         document.getElementById('icon-3').className = 'fa-solid fa-money-bill-wave';
         
-    } else if (currentEndpoint === 'attendance') {
+    } else if (currentEndpoint === 'time_attendance') {
+        if(dateFilterContainer) {
+            dateFilterContainer.classList.remove('hidden');
+            dateFilterContainer.style.display = 'flex';
+            if(!document.getElementById('filter-date').value) {
+                document.getElementById('filter-date').value = new Date().toISOString().split('T')[0];
+            }
+        }
+        
         mainButton.innerHTML = '<i class="fa-solid fa-clock"></i> Mark Attendance';
         mainButton.onclick = openAttendanceModal;
         mainButton.style.display = 'flex';
+        leaveBtn.style.display = 'flex'; 
         
-        const today = new Date().toISOString().split('T')[0];
-        const todaysData = data.filter(d => d.record_date && d.record_date.startsWith(today));
-        
-        document.getElementById('card-1-title').textContent = 'Present Today';
-        document.getElementById('card-1-value').textContent = todaysData.filter(d => d.status === 'Present').length;
+        document.getElementById('card-1-title').textContent = 'Present';
         document.getElementById('icon-1').className = 'fa-solid fa-user-check';
 
-        document.getElementById('card-2-title').textContent = 'Out of Office';
-        document.getElementById('card-2-value').textContent = todaysData.filter(d => d.status === 'Out of Office').length;
-        document.getElementById('icon-2').className = 'fa-solid fa-person-walking-luggage';
+        document.getElementById('card-2-title').textContent = 'On Leave';
+        document.getElementById('icon-2').className = 'fa-solid fa-user-minus';
 
-        document.getElementById('card-3-title').textContent = 'On Leave Today';
-        document.getElementById('card-3-value').textContent = todaysData.filter(d => d.status === 'On Leave').length;
-        document.getElementById('icon-3').className = 'fa-solid fa-user-minus';
-        
-    } else if (currentEndpoint === 'leaves') {
-        mainButton.innerHTML = '<i class="fa-solid fa-calendar-plus"></i> Apply Leave';
-        mainButton.onclick = openLeaveModal;
-        mainButton.style.display = 'flex';
-        
-        document.getElementById('card-1-title').textContent = 'Total Leaves';
-        document.getElementById('card-1-value').textContent = data.length || 0;
-        document.getElementById('icon-1').className = 'fa-solid fa-calendar-minus';
-        
-        document.getElementById('card-2-title').textContent = 'Pending Leaves';
-        document.getElementById('card-2-value').textContent = data.filter(d => d.status === 'Pending').length;
-        document.getElementById('icon-2').className = 'fa-solid fa-clock';
-        
-        document.getElementById('card-3-title').textContent = 'Approved Leaves';
-        document.getElementById('card-3-value').textContent = data.filter(d => d.status === 'Approved').length;
-        document.getElementById('icon-3').className = 'fa-solid fa-check-circle';
+        document.getElementById('card-3-title').textContent = 'Currently Out';
+        document.getElementById('icon-3').className = 'fa-solid fa-person-walking-luggage';
         
     } else if (currentEndpoint === 'payroll') {
+        if(dateFilterContainer) { dateFilterContainer.classList.add('hidden'); dateFilterContainer.style.display = 'none'; }
         mainButton.innerHTML = '<i class="fa-solid fa-file-invoice-dollar"></i> Generate Payroll';
         mainButton.onclick = openPayrollModal;
         mainButton.style.display = 'flex';
@@ -132,33 +148,81 @@ function updateDashboardAndButtons(data) {
     }
 }
 
-function filterByCard(cardIndex) {
-    if(currentEndpoint !== 'attendance') {
-        renderTable(currentTableData);
-        return;
+function applyTimeAttendanceFilter() {
+    if(currentEndpoint !== 'time_attendance') return;
+    const selectedDate = document.getElementById('filter-date').value;
+    const dateData = currentTableData.filter(d => d.date && d.date.startsWith(selectedDate));
+    
+    const presentCount = dateData.filter(d => d.record_type === 'Attendance' && d.status === 'Present').length;
+    const leaveCount = dateData.filter(d => d.record_type === 'Leave' && d.status === 'Approved').length;
+    const outCount = dateData.filter(d => d.record_type === 'Attendance' && d.status === 'Out of Office').length;
+    
+    document.getElementById('card-1-value').textContent = presentCount;
+    document.getElementById('card-2-value').textContent = leaveCount;
+    document.getElementById('card-3-value').textContent = outCount;
+    
+    let filteredData = dateData;
+    if (activeCardIndex === 1) {
+        filteredData = dateData.filter(d => d.record_type === 'Attendance' && d.status === 'Present');
+    } else if (activeCardIndex === 2) {
+        filteredData = dateData.filter(d => d.record_type === 'Leave' && d.status === 'Approved');
+    } else if (activeCardIndex === 3) {
+        filteredData = dateData.filter(d => d.record_type === 'Attendance' && d.status === 'Out of Office');
     }
     
-    const today = new Date().toISOString().split('T')[0];
-    let filteredData = [];
-    
-    if (cardIndex === 1) {
-        filteredData = currentTableData.filter(d => d.record_date && d.record_date.startsWith(today) && d.status === 'Present');
-    } else if (cardIndex === 2) {
-        filteredData = currentTableData.filter(d => d.record_date && d.record_date.startsWith(today) && d.status === 'Out of Office');
-    } else if (cardIndex === 3) {
-        filteredData = currentTableData.filter(d => d.record_date && d.record_date.startsWith(today) && d.status === 'On Leave');
+    for(let i=1; i<=3; i++) {
+        const card = document.querySelectorAll('.dashboard-cards .card')[i-1];
+        if(activeCardIndex === i) {
+            card.style.borderColor = 'var(--primary-color)';
+            card.style.transform = 'translateY(-3px)';
+        } else {
+            card.style.borderColor = 'var(--border-color)';
+            card.style.transform = 'none';
+        }
     }
     
+    currentFilteredData = filteredData;
     renderTable(filteredData);
+}
+
+document.getElementById('filter-date').addEventListener('change', function() {
+    if(currentEndpoint === 'time_attendance') {
+        activeCardIndex = 0; 
+        applyTimeAttendanceFilter();
+    }
+});
+
+function filterByCard(cardIndex) {
+    if(currentEndpoint !== 'time_attendance') return;
+    
+    if (activeCardIndex === cardIndex) {
+        activeCardIndex = 0; 
+    } else {
+        activeCardIndex = cardIndex;
+    }
+    applyTimeAttendanceFilter();
 }
 
 document.getElementById('search-input').addEventListener('input', function(e) {
     const searchTerm = e.target.value.toLowerCase();
     if(!currentTableData) return;
-    const filteredData = currentTableData.filter(item => {
+    
+    let baseData = currentTableData;
+    
+    if (currentEndpoint === 'time_attendance') {
+        const selectedDate = document.getElementById('filter-date').value;
+        baseData = currentTableData.filter(d => d.date && d.date.startsWith(selectedDate));
+        if (activeCardIndex === 1) baseData = baseData.filter(d => d.record_type === 'Attendance' && d.status === 'Present');
+        else if (activeCardIndex === 2) baseData = baseData.filter(d => d.record_type === 'Leave' && d.status === 'Approved');
+        else if (activeCardIndex === 3) baseData = baseData.filter(d => d.record_type === 'Attendance' && d.status === 'Out of Office');
+    }
+    
+    const searchedData = baseData.filter(item => {
         return Object.values(item).some(val => String(val).toLowerCase().includes(searchTerm));
     });
-    renderTable(filteredData);
+    
+    currentFilteredData = searchedData;
+    renderTable(searchedData);
 });
 
 function renderTable(data) {
@@ -174,10 +238,8 @@ function renderTable(data) {
     let displayColumns = [];
     if (currentEndpoint === 'employees') {
         displayColumns = ['emp_id', 'first_name', 'department', 'designation', 'phone', 'employee_status'];
-    } else if (currentEndpoint === 'attendance') {
-        displayColumns = ['attendance_id', 'employee_name', 'record_date', 'status', 'ot_hours'];
-    } else if (currentEndpoint === 'leaves') {
-        displayColumns = ['leave_id', 'employee_name', 'leave_type', 'start_date', 'end_date', 'status'];
+    } else if (currentEndpoint === 'time_attendance') {
+        displayColumns = ['record_type', 'employee_name', 'date', 'status', 'details'];
     } else if (currentEndpoint === 'payroll') {
         displayColumns = ['payroll_id', 'employee_name', 'month_year', 'basic_salary', 'net_salary', 'payment_date'];
     } else {
@@ -202,7 +264,11 @@ function renderTable(data) {
         displayColumns.forEach(key => {
             const td = document.createElement('td');
             
-            if((key === 'hire_date' || key === 'date' || key === 'record_date' || key === 'start_date' || key === 'end_date' || key === 'payment_date' || key === 'dob') && item[key]) {
+            if(key === 'record_type') {
+                const badgeClass = item[key] === 'Attendance' ? 'badge-info' : 'badge-warning';
+                td.innerHTML = `<span class="badge ${badgeClass}" style="background-color: transparent; border: 1px solid currentColor;">${item[key]}</span>`;
+            }
+            else if((key === 'hire_date' || key === 'date' || key === 'record_date' || key === 'start_date' || key === 'end_date' || key === 'payment_date' || key === 'dob') && item[key]) {
                 try { td.textContent = new Date(item[key]).toISOString().split('T')[0]; } 
                 catch { td.textContent = item[key]; }
             } 
@@ -260,11 +326,11 @@ function showToast(message, isError = false) {
 }
 
 function exportToExcel() {
-    if (!currentTableData || currentTableData.length === 0) {
+    if (!currentFilteredData || currentFilteredData.length === 0) {
         showToast('No data to export!', true);
         return;
     }
-    const ws = XLSX.utils.json_to_sheet(currentTableData);
+    const ws = XLSX.utils.json_to_sheet(currentFilteredData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Data");
     XLSX.writeFile(wb, `${currentEndpoint}_data.xlsx`);
@@ -272,7 +338,7 @@ function exportToExcel() {
 }
 
 function exportToPDF() {
-    if (!currentTableData || currentTableData.length === 0) {
+    if (!currentFilteredData || currentFilteredData.length === 0) {
         showToast('No data to export!', true);
         return;
     }
@@ -283,11 +349,13 @@ function exportToPDF() {
     let exportColumns = [];
     if(currentEndpoint === 'employees') {
         exportColumns = ['emp_id', 'first_name', 'last_name', 'phone', 'department', 'designation', 'employee_status'];
+    } else if (currentEndpoint === 'time_attendance') {
+        exportColumns = ['record_type', 'employee_name', 'date', 'status', 'details'];
     } else {
-        exportColumns = Object.keys(currentTableData[0]).filter(k => k !== 'profile_picture' && k !== 'cv_file');
+        exportColumns = Object.keys(currentFilteredData[0]).filter(k => k !== 'profile_picture' && k !== 'cv_file');
     }
 
-    const data = currentTableData.map(obj => {
+    const data = currentFilteredData.map(obj => {
         return exportColumns.map(key => {
             const val = obj[key];
             if(val === null) return '-';
@@ -404,7 +472,8 @@ document.getElementById('apply-leave-form').addEventListener('submit', function(
     })
     .then(() => {
         showToast('Leave applied!', false);
-        closeLeaveModal(); loadData('leaves'); 
+        closeLeaveModal(); 
+        if(currentEndpoint === 'time_attendance') loadData('time_attendance');
     }).catch(() => showToast('Error applying leave.', true));
 });
 
@@ -442,9 +511,15 @@ document.getElementById('add-attendance-form').addEventListener('submit', functi
             emp_id: document.getElementById('att_emp_id').value,
             date: document.getElementById('att_date').value,
             status: document.getElementById('att_status').value,
+            step_out_time: document.getElementById('att_step_out').value,
+            return_time: document.getElementById('att_return').value,
             ot_hours: document.getElementById('att_ot_hours').value
         })
-    }).then(() => { showToast('Attendance marked!', false); closeAttendanceModal(); loadData('attendance'); });
+    }).then(() => { 
+        showToast('Attendance marked!', false); 
+        closeAttendanceModal(); 
+        if(currentEndpoint === 'time_attendance') loadData('time_attendance');
+    });
 });
 
 function openPayrollModal() {

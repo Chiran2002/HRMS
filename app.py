@@ -134,7 +134,6 @@ def update_delete_employee(id):
     finally:
         if connection.is_connected(): cursor.close(); connection.close()
 
-# New Unified Endpoint for Time & Attendance
 @app.route('/time_attendance', methods=['GET'])
 def handle_time_attendance():
     connection = create_db_connection()
@@ -144,13 +143,18 @@ def handle_time_attendance():
             SELECT 'Attendance' AS record_type, a.attendance_id AS id, a.emp_id, 
                    CONCAT(e.first_name, ' ', e.last_name) AS employee_name, 
                    e.profile_picture, e.email,
-                   a.record_date AS date, a.status, CONCAT(a.ot_hours, ' OT Hours') AS details 
+                   DATE_FORMAT(a.record_date, '%Y-%m-%d') AS date, a.status, 
+                   TRIM(CONCAT(
+                       IF(a.step_out_time IS NOT NULL, CONCAT('Out: ', DATE_FORMAT(a.step_out_time, '%H:%i'), '  '), ''),
+                       IF(a.return_time IS NOT NULL, CONCAT('In: ', DATE_FORMAT(a.return_time, '%H:%i'), '  '), ''),
+                       IF(a.ot_hours > 0, CONCAT('(OT: ', a.ot_hours, 'h)'), '')
+                   )) AS details 
             FROM attendance a JOIN employees e ON a.emp_id = e.emp_id
             UNION ALL
             SELECT 'Leave' AS record_type, l.leave_id AS id, l.emp_id, 
                    CONCAT(e.first_name, ' ', e.last_name) AS employee_name, 
                    e.profile_picture, e.email,
-                   l.start_date AS date, l.status, CONCAT(l.leave_type, ' Leave') AS details 
+                   DATE_FORMAT(l.start_date, '%Y-%m-%d') AS date, l.status, CONCAT(l.leave_type, ' Leave') AS details 
             FROM leaves l JOIN employees e ON l.emp_id = e.emp_id
             ORDER BY date DESC
         """
@@ -166,8 +170,11 @@ def add_attendance():
     try:
         cursor = connection.cursor()
         data = request.json
-        query = "INSERT INTO attendance (emp_id, record_date, status, ot_hours) VALUES (%s, %s, %s, %s)"
-        cursor.execute(query, (data.get('emp_id'), data.get('date'), data.get('status'), data.get('ot_hours', 0)))
+        step_out = data.get('step_out_time') if data.get('step_out_time') != '' else None
+        return_time = data.get('return_time') if data.get('return_time') != '' else None
+        
+        query = "INSERT INTO attendance (emp_id, record_date, status, ot_hours, step_out_time, return_time) VALUES (%s, %s, %s, %s, %s, %s)"
+        cursor.execute(query, (data.get('emp_id'), data.get('date'), data.get('status'), data.get('ot_hours', 0), step_out, return_time))
         connection.commit()
         return jsonify({"message": "Attendance marked!"}), 201
     except Exception as e: return jsonify({"error": str(e)}), 500

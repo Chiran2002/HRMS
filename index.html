@@ -19,8 +19,7 @@
         </div>
         <ul class="nav-links">
             <li><button class="active" onclick="loadData('employees', this)"><i class="fa-solid fa-users"></i> Employees</button></li>
-            <li><button onclick="loadData('attendance', this)"><i class="fa-solid fa-clock-rotate-left"></i> Attendance</button></li>
-            <li><button onclick="loadData('leaves', this)"><i class="fa-solid fa-calendar-minus"></i> Leaves</button></li>
+            <li><button onclick="loadData('time_attendance', this)"><i class="fa-solid fa-user-clock"></i> Time & Attendance</button></li>
             <li><button onclick="loadData('payroll', this)"><i class="fa-solid fa-file-invoice-dollar"></i> Payroll</button></li>
         </ul>
     </div>
@@ -63,7 +62,13 @@
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <input type="text" id="search-input" placeholder="Search by name, email, department...">
             </div>
-            <div style="display: flex; gap: 10px;">
+            
+            <div id="date-filter-container" class="hidden" style="display: none; align-items: center; gap: 10px; margin-left: 20px;">
+                <label style="color: var(--text-muted); font-size: 14px; font-weight: 500;"><i class="fa-solid fa-calendar-day"></i> Filter Date:</label>
+                <input type="date" id="filter-date" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--surface-bg); color: var(--text-main); outline: none; font-family: 'Inter', sans-serif;">
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-left: auto;">
                 <button class="btn-secondary" onclick="exportToExcel()"><i class="fa-solid fa-file-excel"></i> Excel</button>
                 <button class="btn-secondary" onclick="exportToPDF()"><i class="fa-solid fa-file-pdf"></i> PDF</button>
                 <button id="main-action-btn" class="btn-primary" onclick="openModal()"><i class="fa-solid fa-plus"></i> Add Employee</button>
@@ -207,6 +212,10 @@
                         <option value="On Leave">On Leave</option>
                         <option value="Out of Office">Out of Office</option>
                     </select>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex:1"><label>Step Out Time</label><input type="time" id="att_step_out"></div>
+                    <div class="form-group" style="flex:1"><label>Return Time</label><input type="time" id="att_return"></div>
                 </div>
                 <div class="form-group"><label>OT Hours (If any)</label><input type="number" id="att_ot_hours" step="0.5" value="0"></div>
                 <button type="submit" class="btn-primary" style="width: 100%; margin-top: 15px; justify-content: center;">Save</button>
